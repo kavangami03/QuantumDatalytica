@@ -2,9 +2,12 @@ import { useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { gsap, ScrollTrigger, SplitText, useScene } from "@/animations/gsap";
 import {
+  imageShape,
   loopState,
   motions,
   onLoop,
+  ParticleField,
+  sampleImage,
   shapes,
   spokesState,
   type StateDef,
@@ -20,7 +23,6 @@ import {
 } from "./metaphors";
 import { labelsIn, mountField, ParticleStage, PLabel } from "./ParticleStage";
 import { StoryButton } from "./StoryButton";
-import { BrandMark } from "./BrandMark";
 
 type Scenario =
   "behavior" | "performance" | "automation" | "connection" | "bottleneck" | "workflow";
@@ -305,48 +307,49 @@ export function FinalCTA() {
   const ref = useRef<HTMLDivElement>(null);
 
   useScene(ref, (conditions, el) => {
+    // Everything the page has shown gathers into one mark: the company that connects it.
     const section = el.querySelector(".final-cta");
-    const field = mountField(
-      el.querySelector(".final-particles"),
-      ({ desktop }) => ({
-        count: desktop ? 2400 : 1100,
-        theme: "dark",
-        glow: 0.12,
-        radius: [0.3, 0.4],
-        pointer: 0.3,
-        accentRatio: 0.3,
-        seed: 97,
-        states: [
-          { shape: shapes.cloud(2.4, 1.3, 1), motion: motions.drift(0.08) },
-          loopState({ radius: 1.35, speed: 0.00009, tilt: 1.22 }),
-        ],
-      }),
-      conditions,
-    );
-    if (conditions.reduce) return () => field?.destroy();
-    if (field) {
-      field.morph = 0;
-      gsap.to(field, {
-        morph: 1,
-        ease: "none",
-        scrollTrigger: { trigger: section, start: "top 85%", end: "center 55%", scrub: 1 },
-      });
+    const stage = el.querySelector(".final-particles");
+    const canvas = stage?.querySelector<HTMLCanvasElement>(".p-canvas");
+    let field: ParticleField | null = null;
+    let cancelled = false;
+    if (canvas) {
+      sampleImage("/brand/symbol-on-dark.svg")
+        .then((sample) => {
+          if (cancelled) return;
+          field = new ParticleField(canvas, {
+            count: conditions.desktop ? 3200 : 1600,
+            theme: "dark",
+            glow: 0.16,
+            radius: [0.4, 0.44],
+            pointer: 0.3,
+            accentFor: (i) => sample.accent[i % sample.accent.length] ?? false,
+            seed: 97,
+            states: [
+              { shape: shapes.nebula(2.4, 1.2, 1), motion: motions.swirl(0.0003, 0.03) },
+              { shape: imageShape(sample, 2.7), motion: motions.drift(0.005) },
+            ],
+          });
+          if (conditions.reduce) {
+            field.still(1);
+            return;
+          }
+          field.morph = 0;
+          field.start();
+          gsap.to(field, {
+            morph: 1,
+            ease: "none",
+            scrollTrigger: { trigger: section, start: "top 75%", end: "center 60%", scrub: 1 },
+          });
+        })
+        .catch(() => undefined);
     }
-
-    const mark = el.querySelector(".closing-mark");
-    gsap
-      .timeline({ scrollTrigger: { trigger: mark, start: "top 80%", once: true } })
-      .from(".closing-mark i", { scaleX: 0, transformOrigin: "left", duration: 1.4, ease: "story" })
-      .from(
-        ".closing-mark span",
-        { scale: 0, stagger: 0.12, duration: 0.6, ease: "back.out(3)" },
-        0.4,
-      )
-      .to(
-        ".closing-mark span:nth-child(2)",
-        { left: "70%", duration: 1.6, ease: "story", repeat: -1, yoyo: true, repeatDelay: 0.6 },
-        1.2,
-      );
+    if (conditions.reduce) {
+      return () => {
+        cancelled = true;
+        field?.destroy();
+      };
+    }
 
     const wordmark = el.querySelector<HTMLElement>(".footer-wordmark");
     const split = wordmark ? SplitText.create(wordmark, { type: "chars" }) : null;
@@ -359,6 +362,7 @@ export function FinalCTA() {
       });
     }
     return () => {
+      cancelled = true;
       field?.destroy();
       split?.revert();
     };
@@ -367,17 +371,14 @@ export function FinalCTA() {
   return (
     <div ref={ref}>
       <section className="final-cta chapter" id="contact" data-chapter="08">
-        <ParticleStage className="final-particles" />
         <div className="chapter-number">
           <span>08 / CONTACT</span>
           <i data-rule />
         </div>
-        <div className="closing-mark" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-          <i />
-        </div>
+        <ParticleStage
+          className="final-particles"
+          label="Everything connected into QuantumDataLytica"
+        />
         <h2 data-split>
           Your data already
           <br />
@@ -401,8 +402,13 @@ export function FinalCTA() {
         <div className="footer-grid">
           <div className="footer-brand">
             <a className="brand" href="#top">
-              <BrandMark />
-              <span className="brand-name">QuantumDataLytica</span>
+              <img
+                className="brand-logo brand-logo-footer"
+                src="/brand/logo-on-dark.svg"
+                alt="QuantumDataLytica"
+                width={327}
+                height={35}
+              />
             </a>
             <p>
               Turning business information

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { gsap, useIsoLayoutEffect } from "@/animations/gsap";
 import { scrollToHash, setScrollLock } from "@/animations/smooth";
 import { StoryButton } from "./StoryButton";
-import { BrandMark } from "./BrandMark";
 
 const links = [
   ["What We Solve", "problem"],
@@ -56,9 +55,14 @@ export function Navigation() {
   return (
     <>
       <header className="site-nav" data-nav>
-        <a className="brand" href="#top" aria-label="QuantumDataLytica home">
-          <BrandMark />
-          <span className="brand-name">QuantumDataLytica</span>
+        <a className="brand" href="#top">
+          <img
+            className="brand-logo"
+            src="/brand/logo-on-dark.svg"
+            alt="QuantumDataLytica"
+            width={327}
+            height={35}
+          />
         </a>
         <nav className="nav-links" aria-label="Main navigation">
           {links.map(([label, target]) => (

@@ -298,7 +298,7 @@ export class SignalField {
       z += (0 - z) * k2;
       project(x, y, z, out);
       const near = out[3] ?? 0;
-      const depth = 0.15 + 0.85 * smooth(near);
+      const depth = 0.55 + 0.45 * smooth(near);
       const alpha = this.labelAlpha * (depth + (1 - depth) * k2);
       label.style.transform = `translate3d(${(out[0] ?? 0).toFixed(1)}px, ${(out[1] ?? 0).toFixed(1)}px, 0)`;
       label.style.opacity = alpha.toFixed(3);

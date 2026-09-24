@@ -163,11 +163,12 @@ export function AutomationScene() {
     const desktop = conditions.desktop;
     // Desktop: the loop turns on the right; the line spans the frame lower down.
     const loop = loopState({
-      radius: desktop ? 0.95 : 0.75,
-      speed: 0.00028,
-      tilt: 1.05,
-      cx: desktop ? 1.35 : -0.35,
-      cy: desktop ? -0.15 : 0,
+      radius: desktop ? 0.7 : 0.72,
+      speed: 0.00026,
+      tilt: 1.12,
+      cx: desktop ? 0.95 : -0.3,
+      cy: desktop ? -0.05 : 0,
+      tube: 0.09,
     });
     const flowY = desktop ? 0.66 : 0;
     const flowX = desktop ? 2.3 : 1.7;
@@ -175,9 +176,9 @@ export function AutomationScene() {
     const field = mountField(
       stage,
       () => ({
-        count: desktop ? 2400 : 1100,
+        count: desktop ? 4200 : 1800,
         theme: "dark",
-        glow: 0.12,
+        glow: 0.16,
         radius: desktop ? [0.2, 0.4] : [0.4, 0.4],
         pointer: 0.2,
         accentRatio: 0.35,

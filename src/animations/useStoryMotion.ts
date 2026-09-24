@@ -21,6 +21,15 @@ export function useStoryMotion(root: RefObject<HTMLElement | null>) {
         toggleClass: { targets: document.documentElement, className: "nav-on-accent" },
       });
     }
+    // The bar gains its glass backdrop as soon as the page leaves the very top.
+    const navBar = document.querySelector<HTMLElement>("[data-nav]");
+    if (navBar) {
+      ScrollTrigger.create({
+        start: 80,
+        end: "max",
+        toggleClass: { targets: navBar, className: "is-solid" },
+      });
+    }
     if (reduce) return;
     const splits: SplitText[] = [];
 

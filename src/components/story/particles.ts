@@ -50,6 +50,8 @@ export interface FieldOptions {
   glow?: number;
   /** Track the pointer over this element only (defaults to the window). */
   pointerEl?: HTMLElement;
+  /** Decide per particle whether it wears the accent colour (e.g. from a sampled image). */
+  accentFor?: (i: number) => boolean;
 }
 
 const TAU = Math.PI * 2;
@@ -209,6 +211,55 @@ export const shapes = {
     },
 };
 
+export interface ImageSample {
+  points: Array<[number, number]>;
+  accent: boolean[];
+  aspect: number;
+}
+
+/** Rasterise an image and return its opaque pixels (0–1) and which ones are blue. */
+export async function sampleImage(src: string, width = 585, height = 350): Promise<ImageSample> {
+  const img = new Image();
+  img.decoding = "async";
+  img.src = src;
+  await img.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return { points: [[0.5, 0.5]], accent: [false], aspect: height / width };
+  ctx.drawImage(img, 0, 0, width, height);
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const points: Array<[number, number]> = [];
+  const accent: boolean[] = [];
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
+      const k = (y * width + x) * 4;
+      if ((data[k + 3] ?? 0) < 110) continue;
+      const r = data[k] ?? 0;
+      const b = data[k + 2] ?? 0;
+      points.push([x / width, y / height]);
+      accent.push(b > r + 50);
+    }
+  }
+  // Seeded Fisher-Yates shuffle so any particle count covers the whole image evenly.
+  const pick = rng(97);
+  for (let i = points.length - 1; i > 0; i--) {
+    const j = Math.floor(pick() * (i + 1));
+    [points[i], points[j]] = [points[j] ?? [0, 0], points[i] ?? [0, 0]];
+    [accent[i], accent[j]] = [accent[j] ?? false, accent[i] ?? false];
+  }
+  return { points: points.length ? points : [[0.5, 0.5]], accent, aspect: height / width };
+}
+
+/** Particle i sits on sampled pixel i (wrapping), so colours can follow the image. */
+export const imageShape =
+  (sample: ImageSample, width = 3) =>
+  (i: number, _n: number, r: Rand): Vec => {
+    const p = sample.points[i % sample.points.length] ?? [0.5, 0.5];
+    return [(p[0] - 0.5) * width, (p[1] - 0.5) * width * sample.aspect, (r() - 0.5) * 0.12];
+  };
+
 /** Rasterise text and return filled pixel positions normalised to 0–1 (2:1 box). */
 export function sampleText(
   text: string,
@@ -352,29 +403,46 @@ export function spokesState(
 
 /** Particles circulating around a tilted loop centred at (cx, cy). */
 export function loopState(
-  opts: { radius?: number; speed?: number; tilt?: number; cx?: number; cy?: number } = {},
+  opts: {
+    radius?: number;
+    speed?: number;
+    tilt?: number;
+    cx?: number;
+    cy?: number;
+    tube?: number;
+  } = {},
 ): StateDef {
-  const { radius = 1, speed = 0.00022, tilt = 0.9, cx = 0, cy = 0 } = opts;
+  const { radius = 1, speed = 0.00022, tilt = 0.9, cx = 0, cy = 0, tube = 0 } = opts;
   const a0: number[] = [];
   const j: number[] = [];
-  const place = (a: number, rad: number, p: Vec) => {
+  const ph: number[] = [];
+  const sh: number[] = [];
+  const place = (a: number, rad: number, lift: number, p: Vec) => {
     const z = Math.sin(a) * rad;
     p[0] = cx + Math.cos(a) * rad;
-    p[1] = cy - z * Math.sin(tilt);
-    p[2] = z * Math.cos(tilt);
+    p[1] = cy - z * Math.sin(tilt) + lift * Math.cos(tilt);
+    p[2] = z * Math.cos(tilt) + lift * Math.sin(tilt);
   };
   return {
     shape: (i, n, r) => {
       a0[i] = (i / n) * TAU;
       j[i] = gauss(r) * 0.05;
+      ph[i] = r() * TAU;
+      sh[i] = Math.sqrt(r());
       return [cx + radius, cy, 0];
     },
     motion: (i, t, p) => {
-      place((a0[i] ?? 0) + t * speed, radius + (j[i] ?? 0), p);
-      p[1] += (j[i] ?? 0) * 0.6;
+      if (tube > 0) {
+        // A torus: each particle sits somewhere in the tube cross-section.
+        const phi = (ph[i] ?? 0) + t * 0.0004;
+        const k = (sh[i] ?? 1) * tube;
+        place((a0[i] ?? 0) + t * speed, radius + Math.cos(phi) * k, Math.sin(phi) * k, p);
+        return;
+      }
+      place((a0[i] ?? 0) + t * speed, radius + (j[i] ?? 0), (j[i] ?? 0) * 0.6, p);
     },
     // Anchors are given as an angle in p[0]; they travel with the loop.
-    anchorMotion: (t, p) => place(p[0] + t * speed, radius, p),
+    anchorMotion: (t, p) => place(p[0] + t * speed, radius + tube * 1.4, 0, p),
   };
 }
 
@@ -530,7 +598,8 @@ export class ParticleField {
       const spark = this.rand() < 0.02;
       this.size[i] = (spark ? 2.5 : 0.75 + this.rand() * 1.15) * (opts.size ?? 1);
       this.delay[i] = this.rand();
-      (this.rand() < ratio && !spark ? accent : base).push(i);
+      const wantsAccent = opts.accentFor ? opts.accentFor(i) : this.rand() < ratio && !spark;
+      (wantsAccent ? accent : base).push(i);
     }
     this.order = Uint16Array.from([...base, ...accent]);
     this.accentFrom = base.length;
@@ -756,7 +825,7 @@ export class ParticleField {
         va[2] + (vb[2] - va[2]) * kl,
       );
       const near = out[3] ?? 0;
-      const depth = 0.2 + 0.8 * smooth(near);
+      const depth = 0.55 + 0.45 * smooth(near);
       const alpha = this.labelAlpha * this.fade * (alphaA + (alphaB - alphaA) * kl) * depth;
       anchor.el.style.transform = `translate3d(${(out[0] ?? 0).toFixed(1)}px, ${(out[1] ?? 0).toFixed(1)}px, 0)`;
       anchor.el.style.opacity = alpha.toFixed(3);

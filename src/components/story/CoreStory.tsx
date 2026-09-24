@@ -17,65 +17,83 @@ const fragments = [
 const fragmentTags = ["DUPLICATE", "DELAYED", "DISCONNECTED"];
 
 /* Eight silos: each keeps its data moving, none of it reaches the others. */
-type Silo = { x: number; y: number; h: number; kind: number };
-const SILO_W = 0.34;
+type Silo = { x: number; y: number; h: number; r: number; kind: number };
 
 const silosDesktop: Silo[] = fragments.map((_, index) => ({
-  x: -2.45 + index * 0.7,
-  y: -0.12,
-  h: 1.55,
+  x: -2.1 + index * 0.6,
+  y: -0.08,
+  h: 1.5,
+  r: 0.13,
   kind: index % 3,
 }));
 const silosPhone: Silo[] = fragments.map((_, index) => ({
-  x: -1.35 + (index % 4) * 0.9,
-  y: index < 4 ? -0.95 : 0.85,
-  h: 1.05,
+  x: -1.2 + (index % 4) * 0.8,
+  y: index < 4 ? -0.85 : 0.95,
+  h: 0.95,
+  r: 0.1,
   kind: index % 3,
 }));
 
 /**
- * kind 0 · DUPLICATE: a twin column of the same data.
- * kind 1 · DELAYED: the same flow, lagging far behind.
- * kind 2 · DISCONNECTED: the column breaks into separate blocks.
- * A few particles leave each silo toward its neighbour and die halfway.
+ * Each silo is a glowing glass column: data spirals up inside it, bright rings
+ * cap it top and bottom, and a few drops leak toward the neighbour and fall away.
+ *   kind 0 · DUPLICATE     two columns holding the same data
+ *   kind 1 · DELAYED       the same flow, crawling
+ *   kind 2 · DISCONNECTED  the column is broken into separate blocks
  */
 function silosState(silos: Silo[]): StateDef {
   const silo: number[] = [];
   const role: number[] = [];
   const u0: number[] = [];
-  const off: Vec[] = [];
+  const a0: number[] = [];
+  const twin: number[] = [];
   return {
     shape: (i, _n, r) => {
       silo[i] = i % silos.length;
-      role[i] = r() < 0.08 ? 1 : 0;
+      const roll = r();
+      role[i] = roll < 0.78 ? 0 : roll < 0.9 ? 1 : 2;
       u0[i] = r();
-      off[i] = [(r() - 0.5) * SILO_W, (r() - 0.5) * 0.9, (r() - 0.5) * SILO_W];
+      a0[i] = r() * Math.PI * 2;
+      twin[i] = r() < 0.45 ? 1 : 0;
       return [0, 0, 0];
     },
     motion: (i, t, p) => {
       const s = silos[silo[i] ?? 0];
       if (!s) return;
-      const o = off[i] ?? [0, 0, 0];
       const top = s.y - s.h / 2;
-      if (role[i] === 1) {
-        // An attempt to reach the next silo that never arrives.
-        const u = frac((u0[i] ?? 0) + t * 0.00035);
-        p[0] = s.x + SILO_W / 2 + u * 0.3;
-        p[1] = s.y + o[1] * s.h * 0.8;
-        p[2] = o[2] * 0.3;
+      const bottom = s.y + s.h / 2;
+      const isTwin = s.kind === 0 && twin[i] === 1;
+      const cx = s.kind === 0 ? s.x + (isTwin ? 0.11 : -0.07) : s.x;
+      const rad = s.kind === 0 ? s.r * 0.72 : s.r;
+      const slow = s.kind === 1;
+      const spin = (a0[i] ?? 0) + t * (slow ? 0.00025 : 0.0009);
+
+      if (role[i] === 2) {
+        // A drop that leaves for the neighbour and falls before it arrives.
+        const u = frac((u0[i] ?? 0) + t * 0.00028);
+        p[0] = cx + rad + u * 0.2;
+        p[1] = top + 0.25 + ((a0[i] ?? 0) / 6.3) * s.h * 0.5 + u * u * 0.55;
+        p[2] = 0;
         return;
       }
-      const slow = s.kind === 1;
+      if (role[i] === 1) {
+        // Bright rings capping the column.
+        const y = (u0[i] ?? 0) < 0.5 ? top : bottom;
+        p[0] = cx + Math.cos(spin) * rad * 1.08;
+        p[1] = y;
+        p[2] = Math.sin(spin) * rad * 1.08;
+        return;
+      }
       let u = frac((u0[i] ?? 0) + t * (slow ? 0.00004 : 0.00016));
       if (s.kind === 2) {
         // Three blocks separated by gaps.
         const seg = Math.floor(u * 3);
-        u = (seg + (u * 3 - seg) * 0.72) / 3;
+        u = (seg + (u * 3 - seg) * 0.7) / 3;
       }
-      const twin = s.kind === 0 && i % 2 === 1 ? 0.2 : s.kind === 0 ? -0.1 : 0;
-      p[0] = s.x + o[0] * (s.kind === 0 ? 0.55 : 1) + twin;
-      p[1] = top + s.h - u * s.h;
-      p[2] = o[2];
+      const shell = 0.55 + 0.45 * Math.sqrt(frac((u0[i] ?? 0) * 7.13));
+      p[0] = cx + Math.cos(spin) * rad * shell;
+      p[1] = bottom - u * s.h;
+      p[2] = Math.sin(spin) * rad * shell;
     },
   };
 }
@@ -90,12 +108,12 @@ export function ProblemScene() {
     const field = mountField(
       stage,
       ({ desktop }) => ({
-        count: desktop ? 3200 : 1500,
+        count: desktop ? 5200 : 2200,
         theme: "dark",
-        glow: 0.13,
+        glow: 0.15,
         radius: desktop ? [0.2, 0.4] : [0.42, 0.24],
-        pointer: 0.3,
-        tilt: 0.08,
+        pointer: 0.06,
+        tilt: 0,
         accentRatio: 0.3,
         seed: 11,
         states: [
@@ -106,7 +124,7 @@ export function ProblemScene() {
         ],
         anchors: labels.map((label, index) => {
           const s = silos[index];
-          return { el: label, at: [null, s ? ([s.x, s.y + s.h / 2 + 0.2, 0] as Vec) : null] };
+          return { el: label, at: [null, s ? ([s.x, s.y + s.h / 2 + 0.16, 0] as Vec) : null] };
         }),
       }),
       conditions,
@@ -346,10 +364,10 @@ export function TransformationScene() {
     const field = mountField(
       stage,
       () => ({
-        count: 2600,
+        count: 3400,
         theme: "dark",
-        glow: 0.12,
-        radius: [0.42, 0.42],
+        glow: 0.15,
+        radius: [0.3, 0.34],
         pointer: 0.3,
         tilt: 0.05,
         seed: 5,
@@ -420,7 +438,7 @@ export function TransformationScene() {
             </article>
           ))}
         </div>
-        <ParticleStage className="morph-stage p-panel" />
+        <ParticleStage className="morph-stage" />
         <div className="transformation-progress" aria-hidden="true">
           {steps.map((step) => (
             <div key={step.number}>
