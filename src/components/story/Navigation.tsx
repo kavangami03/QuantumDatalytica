@@ -12,6 +12,7 @@ export const homeLinks: NavLink[] = [
   { label: "How It Works", href: "#transformation" },
   { label: "Industries", href: "#industries" },
   { label: "Business Impact", href: "#impact" },
+  { label: "Platform", href: "/platform" },
 ];
 
 type NavigationProps = {

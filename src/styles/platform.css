@@ -1,0 +1,1254 @@
+/* ═══════════════ /platform/ ═══════════════ */
+
+.pf-how,
+.pf-machines,
+.pf-monitoring,
+.pf-trust,
+.pf-proof {
+  --node-bg: var(--ink);
+  isolation: isolate;
+  background: var(--ink);
+  color: var(--paper);
+}
+.pf-how .chapter-number,
+.pf-machines .chapter-number,
+.pf-monitoring .chapter-number,
+.pf-trust .chapter-number,
+.pf-proof .chapter-number,
+.pf-how .split-heading p,
+.pf-machines .split-heading p,
+.pf-monitoring .kicker,
+.pf-trust .kicker {
+  color: color-mix(in oklab, var(--paper) 60%, transparent);
+}
+.pf-how::before,
+.pf-machines::before,
+.pf-monitoring::before,
+.pf-trust::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: radial-gradient(ellipse 55% 50% at 70% 40%, oklch(0.36 0.16 263 / 0.26), transparent 72%);
+  pointer-events: none;
+}
+.pf-templates {
+  background: var(--muted);
+}
+
+/* Hero */
+.pf-hero {
+  --btn-hover-bg: var(--paper);
+  --btn-hover-fg: var(--ink);
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  padding: 8rem var(--edge) 5rem;
+  overflow: clip;
+  background: var(--ink);
+  color: var(--paper);
+}
+.pf-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 50% 55% at 72% 50%, oklch(0.38 0.17 263 / 0.4), transparent 72%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, transparent 55%, oklch(0.08 0.01 255 / 0.9));
+}
+.pf-hero-field {
+  position: absolute !important;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.pf-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  align-items: center;
+  gap: clamp(2.5rem, 5vw, 6rem);
+  min-height: calc(100svh - 13rem);
+}
+.breadcrumb {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 55%, transparent);
+}
+.breadcrumb a:hover {
+  color: #fff;
+}
+.breadcrumb [aria-current] {
+  color: #fff;
+}
+.pf-hero h1 {
+  font-size: clamp(2.8rem, 5.4vw, 6.75rem);
+  line-height: 0.92;
+  letter-spacing: -0.055em;
+}
+.pf-hero-intro {
+  max-width: 32rem;
+  margin-top: 2rem;
+  font-size: clamp(1rem, 1.2vw, 1.18rem);
+  line-height: 1.6;
+  color: color-mix(in oklab, var(--paper) 70%, transparent);
+}
+.pf-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 2.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-highlights li {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line-on-dark);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 80%, transparent);
+}
+
+/* The live pipeline card */
+.pipe {
+  position: relative;
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--paper) 14%, transparent);
+  border-radius: 1.25rem;
+  background: color-mix(in oklab, var(--ink) 82%, oklch(0.3 0.12 263));
+  box-shadow:
+    0 50px 120px -40px oklch(0.4 0.2 263 / 0.55),
+    inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent);
+  overflow: hidden;
+}
+.pipe-head,
+.pipe-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 70%, transparent);
+}
+.pipe-head {
+  border-bottom: 1px solid var(--line-on-dark);
+}
+.pipe-foot {
+  border-top: 1px solid var(--line-on-dark);
+  color: color-mix(in oklab, var(--paper) 55%, transparent);
+}
+.pipe-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: oklch(0.72 0.17 150 / 0.14);
+  color: oklch(0.85 0.15 150);
+}
+.pipe-status i,
+.runlog-live i {
+  position: relative;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+.pipe-status i::after,
+.runlog-live i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ping 1.6s var(--ease-out) infinite;
+}
+.pipe-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1.5rem, 3vw, 3rem);
+  padding: 1.6rem 1.3rem 1.8rem;
+  background-image: radial-gradient(color-mix(in oklab, var(--paper) 10%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.pipe-col {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.7rem;
+}
+.pipe-col small {
+  margin-bottom: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 45%, transparent);
+}
+.pipe-node {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--paper) 16%, transparent);
+  border-radius: 0.7rem;
+  background: color-mix(in oklab, var(--ink) 88%, transparent);
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  color: #fff;
+  transition:
+    border-color 0.4s,
+    box-shadow 0.4s,
+    background-color 0.4s;
+}
+.pipe-node b {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--paper) 45%, transparent);
+}
+.pipe-machine b {
+  color: var(--accent);
+}
+.pipe-machine.is-running {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 22%, var(--ink));
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent), 0 0 30px -4px var(--accent);
+}
+.pipe-out b {
+  color: oklch(0.85 0.15 150);
+}
+
+/* Wires shared by every diagram */
+.flow-wires {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.flow-wire {
+  fill: none;
+  stroke: color-mix(in oklab, var(--accent) 55%, transparent);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 5;
+}
+.flow-dot {
+  fill: #fff;
+  filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 8px var(--accent));
+}
+
+/* Particle cards */
+.mcard-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: clamp(3.5rem, 6vw, 6rem);
+}
+.mcard-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.mcard-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.mcard {
+  --node-bg: var(--ink);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 27rem;
+  padding: 1.5rem 1.6rem 1.7rem;
+  border: 1px solid color-mix(in oklab, var(--paper) 10%, transparent);
+  border-radius: 1.1rem;
+  background: var(--ink);
+  color: var(--paper);
+  overflow: hidden;
+  transition:
+    translate 0.6s var(--ease-out),
+    border-color 0.5s;
+}
+.mcard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse 70% 55% at 50% 40%, oklch(0.38 0.17 263 / 0.4), transparent 75%);
+  opacity: 0.4;
+  transition: opacity 0.7s var(--ease-out);
+}
+a.mcard:hover,
+.mcard:hover {
+  translate: 0 -6px;
+  border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+}
+.mcard:hover::before {
+  opacity: 1;
+}
+.mcard-top {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.mcard-index {
+  color: color-mix(in oklab, var(--paper) 45%, transparent);
+}
+.mcard-kicker {
+  color: var(--accent);
+}
+.mcard-stage {
+  flex: 1;
+  min-height: 11rem;
+  margin: 0.25rem -1.6rem;
+}
+.mcard-copy h3 {
+  font-size: clamp(1.35rem, 1.7vw, 1.75rem);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+.mcard-copy p {
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: color-mix(in oklab, var(--paper) 66%, transparent);
+}
+.mcard-link {
+  display: inline-flex;
+  gap: 0.4rem;
+  margin-top: 1.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.mcard-link span {
+  transition: transform 0.5s var(--ease-story);
+}
+.mcard:hover .mcard-link span,
+.pf-audience:hover .mcard-link span {
+  transform: translateX(0.35rem);
+}
+.mcard-edge {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--accent);
+  border-radius: inherit;
+  clip-path: inset(0 100% 100% 0);
+  transition: clip-path 0.9s var(--ease-story);
+  pointer-events: none;
+}
+.mcard:hover .mcard-edge {
+  clip-path: inset(0 0 0 0);
+}
+.mcard-accent {
+  justify-content: space-between;
+  background: linear-gradient(160deg, oklch(0.6 0.22 263), oklch(0.45 0.22 263));
+  border-color: transparent;
+}
+.mcard-accent::before {
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 22px, color-mix(in oklab, #fff 10%, transparent) 22px 23px),
+    radial-gradient(circle at 80% 20%, color-mix(in oklab, #fff 30%, transparent), transparent 55%);
+  opacity: 1;
+}
+.mcard-accent .mcard-index,
+.mcard-accent .mcard-kicker {
+  color: #fff;
+}
+.mcard-accent h3 {
+  font-size: clamp(2rem, 3vw, 3.2rem);
+}
+.mcard-accent p {
+  color: color-mix(in oklab, #fff 85%, transparent);
+}
+
+.pf-also {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin-top: 2.5rem;
+}
+.pf-also ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-also a {
+  display: inline-block;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  transition:
+    background-color 0.4s,
+    color 0.4s,
+    border-color 0.4s;
+}
+.pf-also a:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* How it works */
+.pf-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: clamp(4rem, 7vw, 7rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-step {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.6rem;
+  border: 1px solid var(--line-on-dark);
+  border-radius: 1.1rem;
+  background: color-mix(in oklab, var(--ink) 75%, transparent);
+  backdrop-filter: blur(10px);
+}
+.pf-step-num {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 3.2rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.pf-step h3 {
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+.pf-step p {
+  flex: 1;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: color-mix(in oklab, var(--paper) 68%, transparent);
+}
+.pf-step-bar {
+  display: block;
+  height: 2px;
+  background: var(--line-on-dark);
+  overflow: hidden;
+}
+.pf-step-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #fff);
+  transform-origin: left;
+}
+.pf-statement {
+  max-width: 20ch;
+  margin-top: clamp(4rem, 8vw, 7rem);
+  font-size: clamp(2.4rem, 5.4vw, 6.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+.pf-statement em {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--accent);
+}
+
+/* Split layouts (designer, monitoring) */
+.pf-split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(2.5rem, 6vw, 7rem);
+}
+.pf-split-reverse {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+.pf-split-copy h2 {
+  font-size: clamp(2.6rem, 4.8vw, 5.5rem);
+  margin-top: 1.25rem;
+}
+.pf-bullets {
+  display: grid;
+  gap: 0.9rem;
+  margin: 2rem 0 2.25rem;
+  padding: 0;
+  list-style: none;
+}
+.pf-bullets li {
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+.pf-bullets li::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  translate: 0 -0.1rem;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+/* Designer mock */
+.dz {
+  margin: 0;
+  border-radius: 1.25rem;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 60px 120px -50px oklch(0.2 0.05 263 / 0.6);
+  overflow: hidden;
+}
+.dz-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.2rem;
+  border-bottom: 1px solid var(--line-on-dark);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 72%, transparent);
+}
+.dz-dots {
+  display: flex;
+  gap: 0.35rem;
+}
+.dz-dots i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--paper) 20%, transparent);
+}
+.dz-saved {
+  margin-left: auto;
+  color: oklch(0.85 0.15 150);
+}
+.dz-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(2rem, 4vw, 4rem);
+  min-height: 22rem;
+  padding: 2.5rem 1.5rem;
+}
+.dz-col {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 1.5rem;
+}
+.dz-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in oklab, var(--paper) 18%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in oklab, var(--ink) 90%, #fff);
+  font-size: 0.95rem;
+  color: #fff;
+}
+.dz-node small {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 50%, transparent);
+}
+.dz-node-accent {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 24%, var(--ink));
+  box-shadow: 0 0 34px -6px var(--accent);
+}
+.dz-node-accent small {
+  color: color-mix(in oklab, #fff 75%, transparent);
+}
+
+.pf-after-link {
+  margin-top: 2.5rem;
+}
+.pf-after-button {
+  margin-top: 2.5rem;
+}
+
+/* Monitoring run log */
+.runlog {
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--paper) 14%, transparent);
+  border-radius: 1.25rem;
+  background: color-mix(in oklab, var(--ink) 80%, oklch(0.3 0.12 263));
+  overflow: hidden;
+}
+.runlog-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 1.3rem;
+  border-bottom: 1px solid var(--line-on-dark);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 70%, transparent);
+}
+.runlog-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: oklch(0.85 0.15 150);
+}
+.runlog ul {
+  margin: 0;
+  padding: 0.5rem 0;
+  list-style: none;
+}
+.run {
+  display: grid;
+  grid-template-columns: 0.7rem 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.3rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--paper) 7%, transparent);
+}
+.run-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  --c: oklch(0.8 0.16 150);
+  background: var(--c);
+  box-shadow: 0 0 10px var(--c);
+}
+.run-running .run-dot {
+  --c: var(--accent);
+  animation: blink 1s steps(2) infinite;
+}
+.run-retry .run-dot {
+  --c: oklch(0.8 0.16 75);
+  animation: blink 0.7s steps(2) infinite;
+}
+.run-queued .run-dot {
+  --c: color-mix(in oklab, var(--paper) 35%, transparent);
+  box-shadow: none;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+.run-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.96rem;
+}
+.run-loop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 55%, transparent);
+}
+.run-loop b {
+  color: #fff;
+  font-weight: 500;
+}
+.run-progress {
+  flex: 1;
+  max-width: 12rem;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--line-on-dark);
+  overflow: hidden;
+}
+.run-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(0.7);
+  transform-origin: left;
+}
+.run-state {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: color-mix(in oklab, var(--c, #fff) 15%, transparent);
+  color: color-mix(in oklab, var(--c, #fff) 85%, #fff);
+}
+.run-ok .run-state {
+  --c: oklch(0.8 0.16 150);
+}
+.run-running .run-state {
+  --c: var(--accent);
+}
+.run-retry .run-state {
+  --c: oklch(0.8 0.16 75);
+}
+.run-queued .run-state {
+  --c: oklch(0.7 0.02 255);
+}
+.run-alert {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  margin: 1rem 1.3rem 1.3rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid oklch(0.8 0.16 75 / 0.45);
+  border-radius: 0.8rem;
+  background: oklch(0.8 0.16 75 / 0.08);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: color-mix(in oklab, var(--paper) 80%, transparent);
+}
+.run-alert strong {
+  color: #fff;
+  font-weight: 500;
+}
+.run-alert-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: oklch(0.8 0.16 75);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* Integrations + templates rows */
+.pf-int-bleed {
+  margin: clamp(3rem, 6vw, 5rem) calc(-1 * var(--edge)) 0;
+}
+.pf-int-stage {
+  height: clamp(26rem, 64vh, 40rem);
+}
+.pf-rows {
+  margin: clamp(3rem, 6vw, 5rem) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+.pf-rows a {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) minmax(0, 1.2fr) 2rem;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.8rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: color 0.5s var(--ease-story);
+}
+.pf-rows-templates a {
+  grid-template-columns: 4rem minmax(0, 1fr) minmax(0, 1.1fr) auto 2rem;
+}
+.pf-rows a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.6s var(--ease-story);
+}
+.pf-rows a:hover {
+  color: var(--paper);
+}
+.pf-rows a:hover::before {
+  transform: scaleY(1);
+}
+.pf-row-num {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--accent);
+}
+.pf-rows h3 {
+  font-size: clamp(1.4rem, 2.2vw, 2.4rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+.pf-rows p {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: color-mix(in oklab, currentColor 68%, transparent);
+}
+.pf-tag {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pf-row-arrow {
+  width: 1.6rem;
+  height: 1.6rem;
+  stroke-width: 1.25;
+  color: var(--accent);
+  transition: transform 0.6s var(--ease-story);
+}
+.pf-rows a:hover .pf-row-arrow {
+  transform: rotate(45deg);
+  color: #fff;
+}
+
+/* Proof */
+.pf-proof-number {
+  font-size: clamp(8rem, 24vw, 22rem);
+  line-height: 0.85;
+  letter-spacing: -0.07em;
+  color: #fff;
+}
+.pf-proof-line {
+  max-width: 34rem;
+  margin: 1.5rem 0 2rem;
+  font-size: 1.3rem;
+  line-height: 1.45;
+}
+
+/* Built for */
+.pf-teams h2 {
+  max-width: 16ch;
+}
+.pf-audiences {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: clamp(3.5rem, 6vw, 6rem);
+}
+.pf-audience {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 24rem;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 1.1rem;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.6s var(--ease-story);
+}
+.pf-audience::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  clip-path: circle(0% at 100% 0%);
+  transition: clip-path 0.9s var(--ease-story);
+}
+.pf-audience:hover {
+  color: var(--paper);
+}
+.pf-audience:hover::before {
+  clip-path: circle(150% at 100% 0%);
+}
+.pf-audience-num {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 4rem;
+  line-height: 0.9;
+  color: var(--accent);
+}
+.pf-audience h3 {
+  margin-top: auto;
+  font-size: clamp(1.6rem, 2.4vw, 2.5rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+.pf-audience p {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: color-mix(in oklab, currentColor 68%, transparent);
+}
+.pf-audience .mcard-link {
+  color: inherit;
+}
+
+/* Security & pricing */
+.pf-trust-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  align-items: center;
+  gap: clamp(2.5rem, 6vw, 7rem);
+}
+.pf-trust h2 {
+  font-size: clamp(2.8rem, 5.4vw, 6rem);
+}
+.pf-trust-rows {
+  margin: 3rem 0 2.25rem;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line-on-dark);
+}
+.pf-trust-rows li {
+  display: grid;
+  grid-template-columns: 2rem minmax(9rem, 0.6fr) 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--line-on-dark);
+}
+.pf-trust-rows strong {
+  font-weight: 500;
+  font-size: 1.15rem;
+}
+.pf-trust-rows span:last-child {
+  color: color-mix(in oklab, var(--paper) 68%, transparent);
+}
+.pf-lock {
+  position: relative;
+  width: 1rem;
+  height: 0.8rem;
+  margin-top: 0.4rem;
+  border-radius: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+}
+.pf-lock::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 0.62rem;
+  height: 0.5rem;
+  translate: -50% 0;
+  border: 2px solid var(--accent);
+  border-bottom: 0;
+  border-radius: 0.4rem 0.4rem 0 0;
+}
+.pf-price {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 2.5rem;
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(circle at 85% 10%, oklch(0.62 0.22 263 / 0.55), transparent 55%),
+    color-mix(in oklab, var(--ink) 80%, oklch(0.3 0.12 263));
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+  box-shadow: 0 50px 120px -40px oklch(0.45 0.22 263 / 0.6);
+}
+.pf-price-title {
+  font-size: clamp(2rem, 3.2vw, 3.2rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+.pf-price-title em {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: color-mix(in oklab, var(--accent) 60%, #fff);
+}
+.pf-price > p:not(.pf-price-title) {
+  line-height: 1.6;
+  color: color-mix(in oklab, var(--paper) 72%, transparent);
+}
+.pf-price .magnetic {
+  align-self: flex-start;
+}
+
+/* Get started: accent chapter */
+.pf-cta {
+  --btn-hover-bg: #fff;
+  --btn-hover-fg: var(--accent);
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 90vh;
+  background: var(--accent);
+  color: #fff;
+}
+.pf-cta-field {
+  position: absolute !important;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.pf-cta .chapter-number {
+  color: color-mix(in oklab, #fff 75%, transparent);
+}
+.pf-cta h2 {
+  max-width: 17ch;
+  font-size: clamp(3rem, 7vw, 8.5rem);
+}
+.pf-cta h2 em {
+  color: #fff;
+}
+.pf-cta > p {
+  max-width: 34rem;
+  margin-top: 2rem;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: color-mix(in oklab, #fff 85%, transparent);
+}
+.pf-cta .story-btn:not(.story-btn-outline) {
+  background: #fff;
+  border-color: #fff;
+  color: var(--accent);
+}
+.pf-cta .story-btn:not(.story-btn-outline):hover {
+  color: #fff;
+}
+.pf-cta .story-btn:not(.story-btn-outline)::before {
+  background: var(--ink);
+}
+
+/* Dark-section headings keep the accent readable */
+.pf-how h2 em,
+.pf-machines h2 em,
+.pf-monitoring h2 em,
+.pf-trust h2 em,
+.pf-hero h1 em {
+  color: color-mix(in oklab, var(--accent) 70%, #fff);
+}
+
+/* ───────── Responsive ───────── */
+@media (max-width: 1100px) {
+  .mcard-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pf-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .pf-hero-grid,
+  .pf-split,
+  .pf-split-reverse,
+  .pf-trust-grid {
+    grid-template-columns: 1fr;
+  }
+  .pf-split-reverse .runlog {
+    order: 2;
+  }
+  .mcard-grid-3,
+  .pf-audiences {
+    grid-template-columns: 1fr;
+  }
+  .pf-rows a,
+  .pf-rows-templates a {
+    grid-template-columns: 2.5rem 1fr 1.6rem;
+  }
+  .pf-rows p,
+  .pf-rows .pf-tag {
+    grid-column: 2;
+  }
+  .pf-row-arrow {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+@media (max-width: 560px) {
+  .pipe-body,
+  .dz-board {
+    grid-template-columns: 1fr;
+  }
+  .mcard-grid-4,
+  .pf-steps {
+    grid-template-columns: 1fr;
+  }
+  .pf-trust-rows li {
+    grid-template-columns: 2rem 1fr;
+  }
+  .pf-trust-rows li span:last-child {
+    grid-column: 2;
+  }
+}
+
+/* Pipeline showcase: the five highlights as a big numbered list beside the live pipeline. */
+.pf-showcase {
+  min-height: 0;
+  padding: clamp(6rem, 11vw, 10rem) var(--edge);
+}
+.pf-showcase .pf-hero-grid {
+  min-height: 0;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+.pf-showcase .pf-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line-on-dark);
+}
+.pf-showcase .pf-highlights li {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  padding: 1.1rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-on-dark);
+  border-radius: 0;
+  font-family: var(--font-sans);
+  font-size: clamp(1.8rem, 3.4vw, 3.8rem);
+  letter-spacing: -0.045em;
+  line-height: 1;
+  text-transform: none;
+  color: #fff;
+  transition:
+    color 0.4s,
+    padding 0.6s var(--ease-story);
+}
+.pf-showcase .pf-highlights li span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+.pf-showcase .pf-highlights li:hover {
+  padding-left: 0.75rem;
+  color: color-mix(in oklab, var(--accent) 55%, #fff);
+}
+@media (max-width: 900px) {
+  .pf-showcase .pf-hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Platform hero v2: the data river runs behind the copy into the pipeline card. */
+.pf-hero-v2 .pf-hero-field {
+  opacity: 1;
+}
+.pf-hero-v2 .pf-hero-copy {
+  position: relative;
+  z-index: 1;
+}
+.pf-hero-v2 h1 {
+  text-shadow: 0 0 60px oklch(0.155 0.012 255 / 0.9);
+}
+.pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 2.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line-on-dark);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--ink) 80%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 85%, transparent);
+}
+.pf-chips li::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+.pf-hero-v2 .pipe {
+  position: relative;
+  z-index: 1;
+}
+
+/* Platform hero, simplified: calmer type, a light stream, a quiet card. */
+.pf-hero-v2 {
+  min-height: 100svh;
+  padding-top: 7rem;
+  padding-bottom: 3rem;
+}
+.pf-hero-v2 .pf-hero-grid {
+  min-height: calc(100svh - 10rem);
+  gap: clamp(2rem, 5vw, 5rem);
+}
+.pf-hero-v2 h1 {
+  max-width: 17ch;
+  font-size: clamp(2.4rem, 3.9vw, 4.6rem);
+  line-height: 1;
+  text-shadow: none;
+}
+.pf-hero-v2 .pf-hero-intro {
+  margin-top: 1.5rem;
+}
+.pf-hero-v2 .hero-actions {
+  margin-top: 2rem;
+}
+.pf-hero-v2 .pf-chips {
+  margin-top: 1.75rem;
+}
+.pf-hero-v2 .pf-hero-field {
+  opacity: 0.55;
+}
+.pf-hero-v2::before {
+  background: radial-gradient(ellipse 40% 45% at 72% 50%, oklch(0.38 0.17 263 / 0.22), transparent 72%);
+}
+.pf-hero-v2 .pipe {
+  box-shadow: 0 30px 80px -40px oklch(0.4 0.2 263 / 0.45);
+}
+
+/* Platform page: calmer section headings. */
+.platform-page h2,
+.platform-page .pf-split-copy h2,
+.platform-page .pf-trust h2,
+.platform-page .faq-head h2 {
+  max-width: 20ch;
+  font-size: clamp(2.2rem, 3.6vw, 4.2rem);
+  line-height: 1;
+}
+.platform-page .pf-cta h2 {
+  font-size: clamp(2.6rem, 4.6vw, 5.4rem);
+}
+.platform-page .pf-statement {
+  font-size: clamp(1.9rem, 3.4vw, 3.8rem);
+}
+.platform-page .split-heading {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}

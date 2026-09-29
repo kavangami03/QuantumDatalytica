@@ -2,7 +2,14 @@ import { useRef } from "react";
 import { gsap, useScene } from "@/animations/gsap";
 import { fireIntro } from "@/animations/intro";
 import { setScrollLock } from "@/animations/smooth";
-import { imageShape, motions, ParticleField, rainState, sampleImage } from "./particles";
+import {
+  imageShape,
+  type ImageSample,
+  motions,
+  ParticleField,
+  rainState,
+  sampleImage,
+} from "./particles";
 
 const SEEN_KEY = "qdl-intro-seen";
 
@@ -56,7 +63,7 @@ export function Preloader() {
         },
       });
       if (field) {
-        tl.to(field, { fade: 1, duration: 0.5, ease: "power2.out" }, 0).to(
+        tl.to(
           field,
           { morph: 1, duration: full ? 1.6 : 0.9, ease: "power2.inOut" },
           full ? 0.55 : 0.2,
@@ -92,46 +99,51 @@ export function Preloader() {
         .call(fireIntro, [], "-=0.5");
     };
 
-    // Sample the real symbol, then let the particles find their places in it.
+    // The rain starts at once; the logo shape is swapped in as soon as the image is read.
+    let sample: ImageSample | null = null;
+    const rain = rainState({ width: 3.7, top: -1.8, bottom: 1.8 });
     if (canvas) {
-      sampleImage("/brand/symbol-on-dark.svg")
-        .then((sample) => {
-          if (cancelled) return;
-          field = new ParticleField(canvas, {
-            count: desktop ? 3600 : 1800,
-            theme: "dark",
-            glow: 0.16,
-            radius: [0.45, 0.3],
-            bright: true,
-            accentFor: (i) => sample.accent[i % sample.accent.length] ?? false,
-            seed: 3,
-            // Data rains down the screen, then gathers into the logo, top first.
-            localMorph: (i, morph) => {
-              const landY = sample.points[i % sample.points.length]?.[1] ?? 0.5;
-              const k = morph * 1.7 - landY * 0.55 - (((i * 37) % 100) / 100) * 0.15;
-              const c = k < 0 ? 0 : k > 1 ? 1 : k;
-              return c * c * (3 - 2 * c);
-            },
-            states: [
-              rainState({ width: 3.7, top: -1.8, bottom: 1.8 }),
-              {
-                shape: (i, n, r) => {
-                  const p = imageShape(sample, 1.6)(i, n, r);
-                  return [p[0], p[1] - 0.32, p[2]];
-                },
-                motion: motions.drift(0.004),
-              },
-            ],
-          });
-          field.fade = 0;
-          field.morph = 0;
-          field.start();
-          play();
-        })
-        .catch(() => play());
-    } else {
-      play();
+      try {
+        field = new ParticleField(canvas, {
+          count: desktop ? 3600 : 1800,
+          theme: "dark",
+          glow: 0.16,
+          radius: [0.45, 0.3],
+          bright: true,
+          accentFor: (i) => (i * 7) % 10 < 3,
+          seed: 3,
+          // Data rains down the screen, then gathers into the logo, top first.
+          localMorph: (i, morph) => {
+            if (!sample) return 0;
+            const landY = sample.points[i % sample.points.length]?.[1] ?? 0.5;
+            const k = morph * 1.7 - landY * 0.55 - (((i * 37) % 100) / 100) * 0.15;
+            const c = k < 0 ? 0 : k > 1 ? 1 : k;
+            return c * c * (3 - 2 * c);
+          },
+          states: [rain, rain],
+        });
+        field.fade = 1;
+        field.morph = 0;
+        field.start();
+        el.classList.add("is-live");
+      } catch {
+        field = null;
+      }
     }
+    sampleImage("/brand/symbol-on-dark.svg")
+      .then((result) => {
+        if (cancelled) return;
+        sample = result;
+        field?.setState(1, {
+          shape: (i, n, r) => {
+            const p = imageShape(result, 1.6)(i, n, r);
+            return [p[0], p[1] - 0.32, p[2]];
+          },
+          motion: motions.drift(0.004),
+        });
+        play();
+      })
+      .catch(() => play());
 
     return () => {
       cancelled = true;

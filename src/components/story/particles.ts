@@ -683,6 +683,16 @@ export class ParticleField {
     this.draw(this.clock);
   }
 
+  /** True while the canvas is on screen. */
+  get isVisible() {
+    return this.visible;
+  }
+
+  /** Swap one state for another in place (e.g. once an image has been sampled). */
+  setState(index: number, def: StateDef) {
+    this.states[index] = this.compile(def);
+  }
+
   /** Re-form from wherever the particles are now into a new state. */
   retarget(def: StateDef, anchors?: AnchorDef[]) {
     const snapshot: StateDef = { shape: () => [0, 0, 0] };

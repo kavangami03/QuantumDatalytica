@@ -1,5 +1,8 @@
 import { useRef, type ReactNode } from "react";
 import { gsap, useScene } from "@/animations/gsap";
+import { textMark } from "@/components/platform/platform-shapes";
+import { mountField, ParticleStage } from "@/components/story/ParticleStage";
+import { sampleText } from "@/components/story/particles";
 
 export type FaqItem = {
   q: string;
@@ -33,6 +36,25 @@ type FaqProps = {
  */
 export function Faq({ items, chapter, firstOpen = false }: FaqProps) {
   const ref = useRef<HTMLElement>(null);
+  // A question mark drawn in particles under the heading, turning slowly.
+  useScene(ref, (conditions, el) => {
+    const field = mountField(
+      el.querySelector(".faq-mark"),
+      () => ({
+        count: 1300,
+        theme: "dark",
+        bright: true,
+        glow: 0.14,
+        radius: [0.5, 0.5],
+        pointer: 0.4,
+        accentRatio: 0.45,
+        seed: 509,
+        states: [textMark(sampleText("?", "600 220px Geist, sans-serif"), 3.6)],
+      }),
+      conditions,
+    );
+    return () => field?.destroy();
+  });
 
   useScene(ref, ({ reduce }, el) => {
     const rows = Array.from(el.querySelectorAll<HTMLDetailsElement>("details"));
@@ -91,6 +113,7 @@ export function Faq({ items, chapter, firstOpen = false }: FaqProps) {
             <br />
             <em>answered.</em>
           </h2>
+          <ParticleStage className="faq-mark" />
         </div>
         <div className="faq-list">
           {items.map((item, index) => (

@@ -789,3 +789,61 @@ html .ba2.is-done .ba-beam {
     font-size: 1rem;
   }
 }
+
+/* Loader: CSS data rain from the very first paint, until the particle canvas takes over. */
+html .preloader-bar i {
+  transform: scaleX(0);
+}
+html .preloader .preloader-stage::before {
+  content: "";
+  position: absolute;
+  inset: -40% 0 0;
+  background-image:
+    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.95) 0 3px, transparent 3px 26px),
+    repeating-linear-gradient(to bottom, oklch(0.66 0.21 263) 0 3px, transparent 3px 38px);
+  background-size:
+    2px 100%,
+    2px 100%;
+  mask-image: repeating-linear-gradient(to right, black 0 2px, transparent 2px 38px);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 3px oklch(0.66 0.21 263));
+  animation: css-rain 1.4s linear infinite;
+  transition: opacity 0.5s;
+}
+html .preloader.is-live .preloader-stage::before {
+  opacity: 0;
+}
+@keyframes css-rain {
+  to {
+    transform: translateY(26px);
+  }
+}
+
+/* Marquee: half size. */
+html .marquee-track {
+  font-size: clamp(1.5rem, 4.5vw, 5rem);
+}
+html .marquee {
+  padding-block: clamp(0.75rem, 1.6vw, 1.4rem);
+}
+
+/* ─────────── 60fps: no live filters or blurs over animated content ─────────── */
+/* Wire dots glow with a translucent ring instead of an SVG filter (filters repaint every frame). */
+html .flow-dot {
+  filter: none;
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-opacity: 0.45;
+  paint-order: stroke;
+}
+html .preloader .preloader-stage::before {
+  filter: none;
+}
+html .pf-step,
+html .outcome-chips li,
+html .p-label-center .p-label-text,
+html .hero-core,
+html .site-nav::before {
+  backdrop-filter: none;
+}

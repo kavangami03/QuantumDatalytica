@@ -1003,3 +1003,171 @@ export function messToRows(
     },
   };
 }
+
+/* ─────────── Section backdrops for the Platform page ─────────── */
+
+/** Blueprint: a faint dot lattice with signals racing along its rows and columns. */
+export function blueprintState(cols = 26, rows = 10, w = 5.2, h = 2): StateDef {
+  const role: number[] = [];
+  const k0: number[] = [];
+  const u0: number[] = [];
+  const gx = (c: number) => -w / 2 + (c / (cols - 1)) * w;
+  const gy = (r: number) => -h / 2 + (r / (rows - 1)) * h;
+  return {
+    shape: (i, _n, r) => {
+      role[i] = r() < 0.45 ? 0 : r() < 0.6 ? 1 : 2;
+      k0[i] = Math.floor(r() * cols * rows);
+      u0[i] = r();
+      return [0, 0, 0];
+    },
+    motion: (i, t, p) => {
+      const k = k0[i] ?? 0;
+      const c = k % cols;
+      const rr = Math.floor(k / cols) % rows;
+      if (role[i] === 0) {
+        p[0] = gx(c);
+        p[1] = gy(rr);
+        p[2] = 0;
+        return;
+      }
+      const u = frac((u0[i] ?? 0) + t * 0.00012);
+      if (role[i] === 1) {
+        // A signal running along a row, with a short tail.
+        p[0] = -w / 2 + u * w;
+        p[1] = gy(rr) + ((i % 5) - 2) * 0.004;
+      } else {
+        p[0] = gx(c) + ((i % 5) - 2) * 0.004;
+        p[1] = -h / 2 + u * h;
+      }
+      p[2] = 0;
+    },
+    trail: 0.5,
+  };
+}
+
+/** Templates: small page outlines drifting upward, each at its own pace. */
+export function risingPagesState(count = 22, w = 5, h = 2.2): StateDef {
+  const page: number[] = [];
+  const u0: number[] = [];
+  const x0: number[] = [];
+  const sp: number[] = [];
+  const pw = 0.22;
+  const ph = 0.3;
+  return {
+    shape: (i, _n, r) => {
+      page[i] = Math.floor(r() * count);
+      u0[i] = r();
+      return [0, 0, 0];
+    },
+    motion: (i, t, p) => {
+      const k = page[i] ?? 0;
+      if (x0[k] === undefined) {
+        x0[k] = frac(Math.sin(k * 91.3) * 437.5) * w - w / 2;
+        sp[k] = 0.00003 + frac(Math.sin(k * 17.1) * 91.7) * 0.00004;
+      }
+      const lift = frac(frac(k * 0.618) + t * (sp[k] ?? 0.00004));
+      const cy = h / 2 + 0.3 - lift * (h + 0.6);
+      const sway = Math.sin(t * 0.0006 + k) * 0.06;
+      // Point on the page outline, plus two text lines inside.
+      const d = (u0[i] ?? 0) * 4;
+      let x: number;
+      let y: number;
+      if ((u0[i] ?? 0) < 0.75) {
+        const s = Math.floor(d / 0.75);
+        const f = (d / 0.75) % 1;
+        x = s === 0 ? -pw / 2 + f * pw : s === 1 ? pw / 2 : s === 2 ? pw / 2 - f * pw : -pw / 2;
+        y = s === 0 ? -ph / 2 : s === 1 ? -ph / 2 + f * ph : s === 2 ? ph / 2 : ph / 2 - f * ph;
+      } else {
+        const line = (u0[i] ?? 0) < 0.875 ? 0 : 1;
+        x = -pw * 0.3 + frac((u0[i] ?? 0) * 17) * pw * 0.6;
+        y = -ph * 0.15 + line * ph * 0.25;
+      }
+      p[0] = (x0[k] ?? 0) + sway + x;
+      p[1] = cy + y;
+      p[2] = Math.sin(k) * 0.3;
+    },
+  };
+}
+
+/** Security: a shield outline with a keyhole, and a slow ring of particles guarding it. */
+export function shieldState(cx = 0, cy = 0, s = 1): StateDef {
+  const role: number[] = [];
+  const u0: number[] = [];
+  const shield = (u: number, p: Vec) => {
+    // Top edge, then two curved sides meeting at the point.
+    if (u < 0.2) {
+      const f = u / 0.2;
+      p[0] = (-0.7 + f * 1.4) * s;
+      p[1] = (-0.85 + Math.sin(f * Math.PI) * -0.08) * s;
+    } else {
+      const f = (u - 0.2) / 0.8;
+      const side = f < 0.5 ? 1 : -1;
+      const g = f < 0.5 ? f * 2 : (1 - f) * 2;
+      p[0] = side * 0.7 * Math.cos(g * Math.PI * 0.5) ** 0.8 * s;
+      p[1] = (-0.85 + g * 1.9) * s;
+    }
+  };
+  return {
+    shape: (i, _n, r) => {
+      role[i] = r() < 0.55 ? 0 : r() < 0.7 ? 1 : 2;
+      u0[i] = r();
+      return [cx, cy, 0];
+    },
+    motion: (i, t, p) => {
+      const u = u0[i] ?? 0;
+      if (role[i] === 0) {
+        shield(u, p);
+        const breathe = 1 + Math.sin(t * 0.0012) * 0.015;
+        p[0] = cx + p[0] * breathe;
+        p[1] = cy + p[1] * breathe;
+        p[2] = 0;
+        return;
+      }
+      if (role[i] === 1) {
+        // Keyhole: a circle over a short stem.
+        if (u < 0.6) {
+          const a = (u / 0.6) * TAU;
+          p[0] = cx + Math.cos(a) * 0.14 * s;
+          p[1] = cy + (-0.05 + Math.sin(a) * 0.14) * s;
+        } else {
+          p[0] = cx + (u - 0.8) * 0.35 * s;
+          p[1] = cy + (0.1 + ((u - 0.6) / 0.4) * 0.28) * s;
+        }
+        p[2] = 0;
+        return;
+      }
+      const a = u * TAU + t * 0.00025;
+      const z = Math.sin(a) * 1.25 * s;
+      p[0] = cx + Math.cos(a) * 1.25 * s;
+      p[1] = cy - z * 0.3;
+      p[2] = z;
+    },
+  };
+}
+
+/** A shape offset to (cx, cy) and gently drifting — used for a big "?" behind the FAQ. */
+export function glyphState(
+  points: Array<[number, number]>,
+  width: number,
+  cx: number,
+  cy: number,
+): StateDef {
+  const pick: number[] = [];
+  return {
+    shape: (i, _n, r) => {
+      pick[i] = Math.floor(r() * points.length);
+      const pt = points[pick[i] ?? 0] ?? [0.5, 0.5];
+      return [cx + (pt[0] - 0.5) * width, cy + (pt[1] - 0.5) * width * 0.5, 0];
+    },
+    motion: (i, t, p) => {
+      const pt = points[pick[i] ?? 0] ?? [0.5, 0.5];
+      p[0] = cx + (pt[0] - 0.5) * width + Math.sin(t * 0.0008 + i) * 0.012;
+      p[1] =
+        cy +
+        (pt[1] - 0.5) * width * 0.5 +
+        Math.cos(t * 0.0007 + i) * 0.012 +
+        Math.sin(t * 0.0005) * 0.04;
+      p[2] = Math.sin(t * 0.0004 + (pt[0] - 0.5) * 3) * 0.2;
+    },
+  };
+}

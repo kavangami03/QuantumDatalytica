@@ -377,7 +377,11 @@ export class SignalField {
       const alpha = (0.12 + 0.88 * near * near + 0.35 * toLogo) * intensity;
       if (alpha < 0.01) continue;
       const s =
-        (this.size[i] ?? 1) * (out[2] ?? 1) * (0.7 + near * 0.6) * (1 + 0.45 * toLogo) * (1.35 - 0.35 * smooth(clamp01(toSphere)));
+        (this.size[i] ?? 1) *
+        (out[2] ?? 1) *
+        (0.7 + near * 0.6) *
+        (1 + 0.45 * toLogo) *
+        (1.35 - 0.35 * smooth(clamp01(toSphere)));
       ctx.globalAlpha = alpha;
       ctx.fillRect((out[0] ?? 0) - s / 2, (out[1] ?? 0) - s / 2, s, s);
     }
