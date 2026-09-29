@@ -853,3 +853,75 @@ html .hero-core,
 html .site-nav::before {
   backdrop-filter: none;
 }
+
+/* Reality: a 4 × 2 diagnostic board inside the page width. */
+html .problem-bleed {
+  margin-inline: 0;
+}
+html .problem-grid {
+  display: none;
+}
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  html .problem-grid {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    width: min(100%, 207.4vh);
+    aspect-ratio: 5.6 / 2.5;
+    translate: -50% -50%;
+    border: 1px solid var(--line-on-dark);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  html .problem-grid span {
+    border-right: 1px solid var(--line-on-dark);
+    border-bottom: 1px solid var(--line-on-dark);
+    background: radial-gradient(circle at 50% 38%, oklch(0.32 0.13 263 / 0.2), transparent 62%);
+  }
+  html .problem-grid span:nth-child(4n) {
+    border-right: 0;
+  }
+  html .problem-grid span:nth-child(n + 5) {
+    border-bottom: 0;
+  }
+}
+html .problem-stage .p-label-column .p-label-body > i {
+  display: none;
+}
+html .problem-stage .p-label-column .p-label-text strong {
+  max-width: none;
+  white-space: nowrap;
+  font-size: clamp(1rem, 1.2vw, 1.3rem);
+  color: #fff;
+}
+html .problem-stage .p-label-column .p-label-text small {
+  color: color-mix(in oklab, #fff 50%, transparent);
+}
+/* The fault reads as a status pill: a warm warning, not a whisper. */
+html .problem-stage .p-label-column .p-label-text em {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.55rem;
+  border: 1px solid oklch(0.7 0.17 28 / 0.4);
+  border-radius: 999px;
+  background: oklch(0.6 0.19 28 / 0.14);
+  font-size: 0.64rem;
+  font-style: normal;
+  letter-spacing: 0.14em;
+  color: oklch(0.84 0.12 30);
+}
+html .problem-stage .p-label-column .p-label-text em::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}

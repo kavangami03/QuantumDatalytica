@@ -283,8 +283,8 @@ export type Fault =
 
 /**
  * The Reality state: every source as an icon that visibly suffers its problem.
- * delayed: a loading spinner circles it · duplicate: a ghost copy behind it ·
- * scattered: it keeps breaking apart · lost: it drifts off and thins out ·
+ * delayed: a small loading spinner at its corner · duplicate: a ghost copy behind it ·
+ * scattered: it keeps shaking loose · lost: part of it drifts off and back ·
  * disconnected: split in two · unread: a pulsing badge · outdated: it glitches.
  */
 export function faultsState(
@@ -320,11 +320,11 @@ export function faultsState(
       let z = 0;
       switch (faults[k]) {
         case "delayed": {
-          // 22% of the particles become a spinner arc circling the icon.
-          if (e < 0.22) {
-            const a = (e / 0.22) * 1.9 + t * 0.004;
-            x = Math.cos(a) * 0.36;
-            y = Math.sin(a) * 0.36;
+          // A few particles form a small spinner at the corner, like a stuck load.
+          if (e < 0.12) {
+            const a = (e / 0.12) * 4.4 + t * 0.005;
+            x = 0.27 + Math.cos(a) * 0.075;
+            y = -0.25 + Math.sin(a) * 0.075;
           } else {
             y += Math.sin(t * 0.001 + sd * 6) * 0.008;
           }
@@ -340,7 +340,7 @@ export function faultsState(
           break;
         }
         case "scattered": {
-          const burst = Math.pow((Math.sin(t * 0.0011 + k) + 1) / 2, 3) * (0.2 + sd * 0.35);
+          const burst = Math.pow((Math.sin(t * 0.0011 + k) + 1) / 2, 3) * (0.03 + sd * 0.08);
           const d = dir[i] ?? [0, 0];
           x += d[0] * burst;
           y += d[1] * burst;
@@ -350,9 +350,9 @@ export function faultsState(
         case "lost": {
           // A slow tide carries part of the icon away, then brings it back.
           const tide = (Math.sin(t * 0.0006 + k) + 1) / 2;
-          if (e < 0.55) {
+          if (e < 0.3) {
             const d = dir[i] ?? [0, 0];
-            const far = tide * (0.25 + sd * 0.55);
+            const far = tide * (0.12 + sd * 0.25);
             x += d[0] * far + tide * 0.2;
             y += d[1] * far * 0.6 - tide * 0.1;
           }

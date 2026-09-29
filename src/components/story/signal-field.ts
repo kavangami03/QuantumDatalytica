@@ -2,7 +2,8 @@
  * Canvas particle field for the hero.
  *
  * Every particle owns three positions and `morph` blends between them:
- *   0 → scattered clusters of business data
+ *   0 → nine floating clusters of business data, each carrying its label,
+ *       above and below the headline, in a light dust
  *   1 → one slowly turning sphere ("one business view")
  *   2 → nine streams pouring down and converging ("action")
  * The streams end in the QuantumDataLytica logo, drawn in particles, hanging from that point.
@@ -30,29 +31,29 @@ const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
 
 type Vec = [number, number, number];
 
-/* Where each signal's cluster sits in the scattered state (R units from centre). */
+/*
+ * Where each signal's cluster floats, as fractions of the stage [x, y] plus a
+ * depth: five in the band above the headline, four in the band below it,
+ * staggered so no cluster or label meets another. Each label's text runs to
+ * the right of its dot, so the rightmost dots stop well short of the edge.
+ */
 const CLUSTERS: Vec[] = [
-  [-2.05, -0.78, 0.2],
-  [-1.05, -0.9, -0.5],
-  [0.1, -0.74, 0.45],
-  [1.2, -0.88, -0.3],
-  [2.1, -0.7, 0.35],
-  [-1.7, 0.82, -0.25],
-  [-0.45, 0.9, 0.5],
-  [0.85, 0.78, -0.45],
-  [1.95, 0.92, 0.15],
+  [0.12, 0.26, 0.15],
+  [0.3, 0.23, -0.2],
+  [0.48, 0.27, 0.2],
+  [0.64, 0.235, -0.15],
+  [0.8, 0.26, 0.1],
+  [0.2, 0.745, -0.15],
+  [0.39, 0.715, 0.2],
+  [0.58, 0.75, -0.2],
+  [0.76, 0.72, 0.1],
 ];
 
-/* Opening state: one turning data globe beside the headline, with an orbit ring. */
-const GLOBE: Vec = [1.62, -0.1, 0];
-const GLOBE_R = 0.8;
-const RING_R = 1.0;
-const RING_TILT = 1.18;
-const ringLocal = (a: number, r: number, out: Vec) => {
-  const z = Math.sin(a) * r;
-  out[0] = Math.cos(a) * r;
-  out[1] = -z * Math.sin(RING_TILT);
-  out[2] = z * Math.cos(RING_TILT);
+/* Each cluster floats as one piece: a slow bob with its own rhythm. */
+const floatAt = (k: number, t: number, out: Vec) => {
+  out[0] = Math.sin(t * 0.00021 + k * 1.9) * 0.045;
+  out[1] = Math.sin(t * 0.00034 + k * 2.7) * 0.06;
+  out[2] = Math.cos(t * 0.00019 + k * 1.3) * 0.08;
 };
 
 function fibonacci(i: number, n: number): Vec {
@@ -79,14 +80,19 @@ export class SignalField {
   private order: Uint16Array; // paper particles first, accent after
   private accentFrom: number;
   private anchorsB: Vec[];
-  /** Ring angle for ring particles; NaN for points on the globe. */
-  private ringA: Float32Array;
+  /** Which cluster a particle floats with in the opening; -1 for loose dust. */
+  private cluster: Int8Array;
   private logo: Float32Array | null = null;
   private paperIdx: number[] = [];
   private w = 0;
   private h = 0;
   private dpr = 1;
   private R = 1;
+  /** Cluster centres in R units, recomputed from CLUSTERS whenever the stage resizes. */
+  private homes: Vec[] = CLUSTERS.map(() => [0, 0, 0]);
+  /** Half the stage in R units, for the dust (stored as -1…1 fractions). */
+  private halfW = 2.4;
+  private halfH = 1.5;
   private pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   private raf = 0;
   private running = false;
@@ -111,20 +117,24 @@ export class SignalField {
     this.size = new Float32Array(count);
     this.delay = new Float32Array(count);
     this.phase = new Float32Array(count);
-    this.ringA = new Float32Array(count);
+    this.cluster = new Int8Array(count);
 
     const sphereCount = Math.floor(count * 0.8);
     const accent: number[] = [];
     const paper: number[] = [];
     for (let i = 0; i < count; i++) {
-      // Opening: most particles dot the surface of a globe, the rest ride its orbit ring.
-      if (Math.random() < 0.8) {
-        const g = fibonacci(Math.floor(Math.random() * 1400), 1400);
-        this.a.set([g[0] * GLOBE_R, g[1] * GLOBE_R, g[2] * GLOBE_R], i * 3);
-        this.ringA[i] = Number.NaN;
+      // Opening: most particles gather round a signal; the rest is a light dust.
+      // Cluster particles keep an offset from their centre; dust keeps a stage fraction.
+      const k = i % CLUSTERS.length;
+      if (Math.random() < 0.72) {
+        this.cluster[i] = k;
+        this.a.set([gauss() * 0.2, gauss() * 0.09, gauss() * 0.22], i * 3);
       } else {
-        this.ringA[i] = Math.random() * TAU;
-        this.a.set([gauss() * 0.03, gauss() * 0.03, gauss() * 0.03], i * 3);
+        this.cluster[i] = -1;
+        this.a.set(
+          [Math.random() * 2 - 1, Math.random() * 2 - 1, (Math.random() * 2 - 1) * 1.2],
+          i * 3,
+        );
       }
 
       // Sphere surface, plus two tilted orbits.
@@ -222,6 +232,13 @@ export class SignalField {
     this.canvas.width = Math.round(box.width * this.dpr);
     this.canvas.height = Math.round(box.height * this.dpr);
     this.R = Math.min(this.w * 0.24, this.h * 0.32);
+    this.halfW = this.w / 2 / this.R;
+    this.halfH = this.h / 2 / this.R;
+    this.homes = CLUSTERS.map(([fx, fy, z]) => [
+      (fx - 0.5) * 2 * this.halfW,
+      (fy - 0.5) * 2 * this.halfH,
+      z,
+    ]);
     if (!this.running) this.draw(performance.now());
   }
 
@@ -294,31 +311,36 @@ export class SignalField {
     };
 
     const out = [0, 0, 0, 0];
-    const spinG = t * 0.00022;
-    const cosG = Math.cos(spinG);
-    const sinG = Math.sin(spinG);
-    const ringTmp: Vec = [0, 0, 0];
+    // One float offset per cluster per frame, shared by its particles and its label.
+    const floats = this.homes.map((_, k) => {
+      const v: Vec = [0, 0, 0];
+      floatAt(k, t, v);
+      return v;
+    });
     const position = (i: number, d: number, res: Vec) => {
       const i3 = i * 3;
       const ph = this.phase[i] ?? 0;
-      // the globe turns; the ring particles travel around their orbit
-      let ax: number;
-      let ay: number;
-      let az: number;
-      const ra = this.ringA[i] ?? Number.NaN;
-      if (Number.isNaN(ra)) {
-        const gx = a[i3] ?? 0;
-        const gz = a[i3 + 2] ?? 0;
-        ax = GLOBE[0] + gx * cosG - gz * sinG;
-        ay = GLOBE[1] + (a[i3 + 1] ?? 0);
-        az = GLOBE[2] + gx * sinG + gz * cosG;
+      // Floating clusters: the group bobs together while each point drifts a little.
+      const k = this.cluster[i] ?? -1;
+      const home = this.homes[k];
+      const fl = floats[k];
+      let ax = (a[i3] ?? 0) + Math.sin(t * 0.00031 + ph) * 0.03;
+      let ay = (a[i3 + 1] ?? 0) + Math.cos(t * 0.00027 + ph * 1.3) * 0.025;
+      let az = a[i3 + 2] ?? 0;
+      if (home && fl) {
+        ax += home[0] + fl[0];
+        ay += home[1] + fl[1];
+        az += home[2] + fl[2];
       } else {
-        ringLocal(ra + t * 0.00018, RING_R, ringTmp);
-        ax = GLOBE[0] + ringTmp[0] + (a[i3] ?? 0);
-        ay = GLOBE[1] + ringTmp[1] + (a[i3 + 1] ?? 0);
-        az = GLOBE[2] + ringTmp[2] + (a[i3 + 2] ?? 0);
+        ax = (a[i3] ?? 0) * this.halfW * 0.96 + Math.sin(t * 0.00031 + ph) * 0.03;
+        ay = (a[i3 + 1] ?? 0) * this.halfH * 0.96 + Math.cos(t * 0.00027 + ph * 1.3) * 0.025;
       }
-      void ph;
+      if (this.morph === 0) {
+        res[0] = ax;
+        res[1] = ay;
+        res[2] = az;
+        return;
+      }
       // sphere, turning
       const bx0 = b[i3] ?? 0;
       const bz0 = b[i3 + 2] ?? 0;
@@ -380,7 +402,8 @@ export class SignalField {
       position(i, this.delay[i] ?? 0, pos);
       project(pos[0], pos[1], pos[2], out);
       const near = out[3] ?? 0;
-      const alpha = (0.12 + 0.88 * near * near + 0.35 * toLogo) * intensity;
+      const dust = (this.cluster[i] ?? 0) < 0 ? 0.45 + 0.55 * smooth(clamp01(toSphere * 2)) : 1;
+      const alpha = (0.12 + 0.88 * near * near + 0.35 * toLogo) * intensity * dust;
       if (alpha < 0.01) continue;
       const s =
         (this.size[i] ?? 1) *
@@ -397,12 +420,10 @@ export class SignalField {
     const k1 = ease(clamp01(toSphere * 1.35 - 0.17));
     const k2 = ease(clamp01(toFlow * 1.35 - 0.17));
     this.labels.forEach((label, k) => {
-      // Each source rides the orbit ring around the globe.
-      const A: Vec = [0, 0, 0];
-      ringLocal((k / this.labels.length) * TAU + 0.35 + t * 0.00018, RING_R + 0.06, A);
-      A[0] += GLOBE[0];
-      A[1] += GLOBE[1];
-      A[2] += GLOBE[2];
+      // Each label floats with the heart of its cluster.
+      const home = this.homes[k] ?? [0, 0, 0];
+      const fl = floats[k] ?? [0, 0, 0];
+      const A: Vec = [home[0] + fl[0], home[1] + fl[1], home[2] + fl[2]];
       const Bs = this.anchorsB[k] ?? [0, 0, 0];
       const Bx = Bs[0] * cosS - Bs[2] * sinS;
       const Bz = Bs[0] * sinS + Bs[2] * cosS;

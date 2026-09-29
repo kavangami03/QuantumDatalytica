@@ -277,7 +277,8 @@ export function HeroScene() {
         </div>
 
         <h1 className="hero-title">
-          Your business creates <em>data</em> every second. Turn it into <em>clear decisions.</em>
+          Your business creates <em>data</em> every second. <br />
+          Turn it into <em>clear decisions.</em>
         </h1>
 
         <div className="hero-bottom">

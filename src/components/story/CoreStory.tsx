@@ -71,7 +71,9 @@ const faultOf: Record<string, Fault> = {
   "OUT OF DATE": "outdated",
 };
 const sourceFaults = sources.map(([, tag]) => faultOf[tag] ?? "scattered");
-const gridDesktop: Vec[] = [-0.62, 0.46].flatMap((y) =>
+/* Desktop: a 4 × 2 board of tiles, each 1.4R wide and 1.25R tall (the CSS grid
+   draws the same tiles). Icons sit a little above each tile centre. */
+const gridDesktop: Vec[] = [-0.745, 0.505].flatMap((y) =>
   [-2.1, -0.7, 0.7, 2.1].map((x) => [x, y, 0] as Vec),
 );
 const gridPhone: Vec[] = [-1.5, -0.5, 0.5, 1.5].flatMap((y) =>
@@ -93,7 +95,8 @@ export function ProblemScene() {
         glow: 0.18,
         bright: true,
         size: 1.2,
-        radius: desktop ? [0.2, 0.4] : [0.42, 0.24],
+        // Desktop: R fits the 5.6R × 2.5R board inside the stage.
+        radius: desktop ? [1 / 5.6, 1 / 2.7] : [0.42, 0.24],
         pointer: 0.06,
         tilt: 0,
         accentRatio: 0.3,
@@ -106,7 +109,7 @@ export function ProblemScene() {
         ],
         anchors: labels.map((label, index) => {
           const at = places[index];
-          return { el: label, at: [null, at ? ([at[0], at[1] + 0.38, 0] as Vec) : null] };
+          return { el: label, at: [null, at ? ([at[0], at[1] + 0.4, 0] as Vec) : null] };
         }),
       }),
       conditions,
@@ -114,9 +117,14 @@ export function ProblemScene() {
     if (!field || conditions.reduce) return () => field?.destroy();
 
     field.morph = 0;
+    // The board of tiles appears as the mass separates into its eight sources.
+    const grid = el.querySelector<HTMLElement>(".problem-grid");
     gsap.to(field, {
       morph: 1,
       ease: "none",
+      onUpdate: () => {
+        if (grid) grid.style.opacity = String(Math.min(field.morph * 1.4, 1));
+      },
       scrollTrigger: conditions.desktop
         ? { trigger: stage, start: "top top", end: "+=120%", pin: true, scrub: 1 }
         : { trigger: stage, start: "top 80%", end: "center 45%", scrub: 1 },
@@ -162,6 +170,11 @@ export function ProblemScene() {
           className="problem-stage p-panel"
           label="Disconnected sources of business information"
         >
+          <div className="problem-grid" aria-hidden="true">
+            {fragments.map((fragment) => (
+              <span key={fragment} />
+            ))}
+          </div>
           {fragments.map((fragment, index) => (
             <PLabel
               key={fragment}
