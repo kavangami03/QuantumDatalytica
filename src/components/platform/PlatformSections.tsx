@@ -356,8 +356,8 @@ export function PlatformHow() {
       ease: "none",
       scrollTrigger: {
         trigger: el.querySelector(".pf-steps"),
-        start: "top 85%",
-        end: "bottom 45%",
+        start: "top 95%",
+        end: "top 40%",
         scrub: 1,
       },
       onUpdate: () => {
@@ -370,9 +370,8 @@ export function PlatformHow() {
         });
       },
     });
-    gsap.from(el.querySelectorAll(".pf-step"), {
+    gsap.from(steps, {
       y: 40,
-      autoAlpha: 0,
       stagger: 0.12,
       duration: 1,
       scrollTrigger: { trigger: el.querySelector(".pf-steps"), start: "top 80%", once: true },
@@ -1286,17 +1285,17 @@ export function PlatformTrust() {
         <div className="pf-trust-side">
           <ParticleStage className="pf-shield" />
           <div className="pf-price">
-          <span className="kicker">Pricing</span>
-          <p className="pf-price-title">
-            Pay as you go. <em>Only for what runs.</em>
-          </p>
-          <p>
-            No upfront licence and no minimum seat count. You pay for the compute your pipelines
-            use, so cost grows only as your usage grows.
-          </p>
-          <StoryButton href="/pricing/" icon={<ArrowUpRight />}>
-            See pricing
-          </StoryButton>
+            <span className="kicker">Pricing</span>
+            <p className="pf-price-title">
+              Pay as you go. <em>Only for what runs.</em>
+            </p>
+            <p>
+              No upfront licence and no minimum seat count. You pay for the compute your pipelines
+              use, so cost grows only as your usage grows.
+            </p>
+            <StoryButton href="/pricing/" icon={<ArrowUpRight />}>
+              See pricing
+            </StoryButton>
           </div>
         </div>
       </div>

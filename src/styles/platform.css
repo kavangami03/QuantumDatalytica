@@ -1252,3 +1252,178 @@ a.mcard:hover,
 .platform-page .split-heading {
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
 }
+
+/* ───────── Section visuals: one composed particle picture per section ───────── */
+
+/* How it works: the rail that runs over the four steps. */
+.pf-how-rail {
+  height: 150px;
+  margin: clamp(2.5rem, 5vw, 4.5rem) 0 0.75rem;
+  pointer-events: none;
+}
+.pf-how .pf-steps {
+  margin-top: 0;
+}
+.pf-how .pf-step {
+  transition:
+    border-color 0.6s var(--ease-story),
+    box-shadow 0.6s var(--ease-story),
+    opacity 0.6s var(--ease-story);
+  opacity: 0.55;
+}
+.pf-how .pf-step.is-lit {
+  opacity: 1;
+  border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+  box-shadow: 0 30px 70px -40px oklch(0.55 0.22 263 / 0.7);
+}
+
+/* Workflow Designer: the canvas dot grid is particles now. */
+.dz-grid {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Monitoring: live pulse under the run-log header. */
+.runlog-pulse {
+  height: 84px;
+  border-bottom: 1px solid var(--line-on-dark);
+  background: linear-gradient(90deg, transparent, oklch(0.35 0.15 263 / 0.18));
+  pointer-events: none;
+}
+
+/* Templates: list beside a live preview. */
+.tpl-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: start;
+  margin-top: clamp(3rem, 6vw, 5rem);
+}
+.tpl-layout .pf-rows {
+  margin: 0;
+}
+.tpl-layout .pf-rows-templates a {
+  grid-template-columns: 3rem minmax(0, 1fr) auto 1.6rem;
+  row-gap: 0.35rem;
+  padding: 1.5rem 1rem;
+}
+.tpl-layout .pf-rows-templates h3 {
+  grid-column: 2;
+}
+.tpl-layout .pf-rows-templates p {
+  grid-column: 2;
+  grid-row: 2;
+}
+.tpl-layout .pf-rows-templates .pf-tag {
+  grid-column: 3;
+  grid-row: 1;
+}
+.tpl-layout .pf-rows-templates .pf-row-arrow {
+  grid-column: 4;
+  grid-row: 1;
+}
+.pf-rows-templates li.is-active .pf-row-num {
+  color: var(--accent);
+}
+.pf-rows-templates li.is-active a {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.tpl-preview {
+  position: sticky;
+  top: 16vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 26rem;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  color: var(--paper);
+  background:
+    radial-gradient(circle at 50% 45%, oklch(0.36 0.16 263 / 0.45), transparent 65%),
+    var(--ink);
+  box-shadow: 0 40px 90px -50px oklch(0.3 0.15 263 / 0.8);
+}
+.tpl-preview header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 1.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 62%, transparent);
+}
+.tpl-live i {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: oklch(0.85 0.15 150);
+  box-shadow: 0 0 10px oklch(0.85 0.15 150);
+}
+.tpl-stage {
+  flex: 1;
+  min-height: 17rem;
+}
+.tpl-preview figcaption {
+  padding: 1.1rem 1.3rem 1.4rem;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+/* Built for: a small particle picture in each audience card. */
+.pf-audience-stage {
+  flex: 1;
+  min-height: 9rem;
+  margin: -0.5rem -2rem 0;
+  pointer-events: none;
+}
+.pf-audience h3 {
+  margin-top: 0;
+}
+
+/* Security: the shield sits above the pricing card. */
+.pf-trust-side {
+  display: flex;
+  flex-direction: column;
+}
+.pf-shield {
+  height: clamp(15rem, 22vw, 20rem);
+  margin-bottom: -1rem;
+  pointer-events: none;
+}
+
+/* FAQ: the question mark lives under the heading. */
+html .faq-mark {
+  height: clamp(14rem, 22vw, 20rem);
+  margin-top: 1.5rem;
+  pointer-events: none;
+}
+
+@media (max-width: 1100px) {
+  .pf-how-rail {
+    display: none;
+  }
+  .pf-how .pf-steps {
+    margin-top: clamp(3rem, 6vw, 5rem);
+  }
+}
+@media (max-width: 900px) {
+  .tpl-layout {
+    grid-template-columns: 1fr;
+  }
+  .tpl-preview {
+    position: relative;
+    top: 0;
+    order: -1;
+    min-height: 18rem;
+  }
+  .tpl-stage {
+    min-height: 12rem;
+  }
+  html .faq-mark {
+    display: none;
+  }
+}
