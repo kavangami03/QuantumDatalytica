@@ -12,15 +12,14 @@ import { gsap, ScrollTrigger, SplitText, splitReveal, useScene } from "./gsap";
 export function useStoryMotion(root: RefObject<HTMLElement | null>) {
   useScene(root, ({ desktop, reduce }, el) => {
     // Difference-blended chrome turns orange over the cobalt chapter; keep it plain white there.
-    const accent = el.querySelector(".question-trail");
-    if (accent) {
+    el.querySelectorAll(".question-trail").forEach((accent) => {
       ScrollTrigger.create({
         trigger: accent,
         start: "top 60px",
         end: "bottom 60px",
         toggleClass: { targets: document.documentElement, className: "nav-on-accent" },
       });
-    }
+    });
     // The bar gains its glass backdrop as soon as the page leaves the very top.
     const navBar = document.querySelector<HTMLElement>("[data-nav]");
     if (navBar) {

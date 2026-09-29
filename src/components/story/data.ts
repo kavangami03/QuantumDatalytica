@@ -1,31 +1,22 @@
-export const businessNodes = [
-  { label: "CUSTOMERS", x: 18, y: 20 },
-  { label: "OPERATIONS", x: 77, y: 18 },
-  { label: "REVENUE", x: 90, y: 51 },
-  { label: "MARKETING", x: 76, y: 82 },
-  { label: "FINANCE", x: 22, y: 84 },
-  { label: "INVENTORY", x: 7, y: 52 },
-];
-
 export const industries = {
   Hospitality: {
-    nodes: ["Bookings", "Demand", "Rooms", "Pricing", "Guest feedback", "Revenue"],
-    result: "Better visibility. Better revenue decisions.",
+    nodes: ["Bookings", "Demand", "Rooms", "Pricing", "Guest reviews", "Revenue"],
+    result: "See what’s driving every property’s revenue.",
   },
   Healthcare: {
-    nodes: ["Patient information", "Appointments", "Operations", "Communication", "Records"],
-    result: "Clearer operational insight.",
+    nodes: ["Appointments", "Patients", "Staff", "Services", "Feedback", "Operations"],
+    result: "Every location’s operations, one clear view.",
   },
   Retail: {
-    nodes: ["Customers", "Sales", "Products", "Inventory", "Locations"],
-    result: "Know what is selling, where, and when.",
+    nodes: ["Customers", "Products", "Inventory", "Stores", "Promotions", "Sales"],
+    result: "Connect what customers buy with every store.",
   },
   "Financial Services": {
-    nodes: ["Customers", "Performance", "Risk", "Operations", "Service"],
-    result: "See change sooner. Respond with confidence.",
+    nodes: ["Clients", "Accounts", "Branches", "Services", "Risk", "Performance"],
+    result: "Clear understanding across every branch.",
   },
   Manufacturing: {
-    nodes: ["Production", "Inventory", "Supply", "Orders", "Operations"],
-    result: "See where your operation needs attention.",
+    nodes: ["Demand", "Production", "Inventory", "Suppliers", "Quality", "Delivery"],
+    result: "See how each part shapes the whole.",
   },
 } as const;

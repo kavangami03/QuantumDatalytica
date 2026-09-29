@@ -3,19 +3,91 @@ import { ArrowDownRight } from "lucide-react";
 import { gsap, SplitText, useScene } from "@/animations/gsap";
 import { onIntro } from "@/animations/intro";
 import { SignalField } from "./signal-field";
+import {
+  frac,
+  imageShape,
+  type ImageSample,
+  ParticleField,
+  sampleImage,
+  type StateDef,
+} from "./particles";
 import { StoryButton } from "./StoryButton";
+import { DEMO_URL } from "./Navigation";
 
 const signals = [
   "Sales",
   "Customers",
-  "Orders",
+  "Branches",
   "Revenue",
   "Operations",
   "Inventory",
   "Bookings",
   "Feedback",
-  "Marketing",
+  "Reports",
 ];
+
+/**
+ * The logo in particles, kept alive: data keeps rising through the blue bars,
+ * a pulse runs around the cloud outline, and every point shimmers gently.
+ */
+function livingLogo(sample: ImageSample, width: number): StateDef {
+  const base = imageShape(sample, width);
+  const height = width * sample.aspect;
+  const toY = (v: number) => (v - 0.5) * height;
+  // Vertical extent of the blue in each narrow column of the image.
+  const bins = 90;
+  const top = new Array<number>(bins).fill(1);
+  const bottom = new Array<number>(bins).fill(0);
+  sample.points.forEach(([u, v], k) => {
+    if (!sample.accent[k]) return;
+    const b = Math.min(bins - 1, Math.floor(u * bins));
+    top[b] = Math.min(top[b] ?? 1, v);
+    bottom[b] = Math.max(bottom[b] ?? 0, v);
+  });
+  const home: Array<[number, number, number]> = [];
+  const blue: boolean[] = [];
+  const col: number[] = [];
+  const u0: number[] = [];
+  const speed: number[] = [];
+  const angle: number[] = [];
+  return {
+    shape: (i, n, r) => {
+      const p = base(i, n, r);
+      home[i] = p;
+      const k = i % sample.points.length;
+      blue[i] = sample.accent[k] ?? false;
+      col[i] = Math.min(bins - 1, Math.floor((sample.points[k]?.[0] ?? 0.5) * bins));
+      u0[i] = r();
+      speed[i] = 0.00012 + r() * 0.00008;
+      angle[i] = Math.atan2(p[1], p[0]);
+      return p;
+    },
+    motion: (i, t, p) => {
+      const h0 = home[i] ?? [0, 0, 0];
+      const b = col[i] ?? 0;
+      const topV = top[b] ?? 1;
+      const bottomV = bottom[b] ?? 0;
+      if (blue[i] && bottomV > topV) {
+        // Rising data inside the bar.
+        const v = bottomV - frac((u0[i] ?? 0) + t * (speed[i] ?? 0.00015)) * (bottomV - topV);
+        p[0] = h0[0];
+        p[1] = toY(v);
+        p[2] = h0[2];
+        return;
+      }
+      // A pulse that travels around the cloud, pushing points gently outward.
+      const run = ((t * 0.0011) % (Math.PI * 2)) - Math.PI;
+      let diff = (angle[i] ?? 0) - run;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      const bump = Math.exp(-(diff * diff) / 0.09) * 0.075;
+      const len = Math.hypot(h0[0], h0[1]) || 1;
+      const ph = i * 1.618;
+      p[0] = h0[0] + (h0[0] / len) * bump + Math.sin(t * 0.0009 + ph) * 0.004;
+      p[1] = h0[1] + (h0[1] / len) * bump + Math.cos(t * 0.0008 + ph) * 0.004;
+      p[2] = h0[2];
+    },
+  };
+}
 
 export function HeroScene() {
   const ref = useRef<HTMLElement>(null);
@@ -34,7 +106,8 @@ export function HeroScene() {
         canvas,
         labels,
         el.querySelector(".hero-core"),
-        desktop ? 2200 : 1100,
+        desktop ? 4200 : 1100,
+        el.querySelector<HTMLElement>(".hero-logo-stage"),
       );
     } catch {
       return;
@@ -49,6 +122,38 @@ export function HeroScene() {
     }
 
     field.start();
+
+    // The logo at the end of the streams, drawn in the same particles; it simply holds its shape.
+    let logoField: ParticleField | null = null;
+    let logoRunning = false;
+    // The logo only animates while it is actually on screen.
+    const syncLogo = () => {
+      const want = field.morph > 1.5;
+      if (!logoField || want === logoRunning) return;
+      logoRunning = want;
+      if (want) logoField.start();
+      else logoField.stop();
+    };
+    let cancelled = false;
+    const logoCanvas = el.querySelector<HTMLCanvasElement>(".hero-logo-stage canvas");
+    if (desktop && logoCanvas) {
+      sampleImage("/brand/symbol-on-dark.svg")
+        .then((sample) => {
+          if (cancelled) return;
+          logoField = new ParticleField(logoCanvas, {
+            count: 3600,
+            theme: "dark",
+            glow: 0.17,
+            radius: [0.48, 0.8],
+            bright: true,
+            accentFor: (i) => sample.accent[i % sample.accent.length] ?? false,
+            seed: 41,
+            states: [livingLogo(sample, 2)],
+          });
+          syncLogo();
+        })
+        .catch(() => undefined);
+    }
     const titleSplit = SplitText.create(title, {
       type: "lines",
       mask: "lines",
@@ -106,13 +211,10 @@ export function HeroScene() {
     gsap
       .timeline({
         defaults: { ease: "none" },
-        scrollTrigger: { trigger: pin, start: "top top", end: "+=300%", pin: true, scrub: 1 },
+        scrollTrigger: { trigger: pin, start: "top top", end: "+=320%", pin: true, scrub: 1 },
+        onUpdate: () => syncLogo(),
       })
-      .to(
-        title,
-        { yPercent: -18, autoAlpha: 0, filter: "blur(14px)", duration: 0.28, ease: "power2.in" },
-        0,
-      )
+      .to(title, { yPercent: -18, autoAlpha: 0, duration: 0.28, ease: "power2.in" }, 0)
       .to(".hero-top", { autoAlpha: 0, duration: 0.15 }, 0)
       .to(".hero-bottom", { y: 30, autoAlpha: 0, duration: 0.18 }, 0)
       .to(field, { morph: 1, duration: 0.5, ease: "power1.inOut" }, 0.06)
@@ -121,11 +223,13 @@ export function HeroScene() {
       .from(
         resolutionSplit.lines,
         { yPercent: 115, stagger: 0.05, duration: 0.18, ease: "power3.out" },
-        0.95,
+        1.12,
       )
-      .to({}, { duration: 0.45 });
+      .to({}, { duration: 0.4 });
 
     return () => {
+      cancelled = true;
+      logoField?.destroy();
       pending.cancel();
       window.removeEventListener("pointermove", move);
       field.destroy();
@@ -153,6 +257,9 @@ export function HeroScene() {
               </span>
             </span>
           ))}
+          <div className="hero-logo-stage" aria-label="QuantumDataLytica">
+            <canvas aria-hidden="true" />
+          </div>
           <div className="hero-core">
             <span className="hero-core-ring" aria-hidden="true" />
             <small>ONE</small> BUSINESS VIEW
@@ -161,7 +268,7 @@ export function HeroScene() {
 
         <div className="hero-top">
           <p className="kicker" data-intro>
-            Information, made useful.
+            One business. One clear view.
           </p>
           <span className="scroll-cue" data-intro>
             <i />
@@ -170,20 +277,19 @@ export function HeroScene() {
         </div>
 
         <h1 className="hero-title">
-          Your business creates <em>data</em> every second.
+          Your business creates <em>data</em> every second. Turn it into <em>clear decisions.</em>
         </h1>
 
         <div className="hero-bottom">
           <p className="hero-intro" data-intro>
-            We turn that information into clearer decisions, smarter operations, and automated
-            business processes.
+            Bring every report, branch and team into one place, and get answers you can act on.
           </p>
           <div className="hero-actions" data-intro>
             <StoryButton href="#transformation" icon={<ArrowDownRight />}>
               See how it works
             </StoryButton>
-            <StoryButton href="#industries" variant="storyOutline">
-              Explore the possibilities
+            <StoryButton href={DEMO_URL} variant="storyOutline" track="demo">
+              Book a demo
             </StoryButton>
           </div>
         </div>

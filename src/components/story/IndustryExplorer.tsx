@@ -1,38 +1,33 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { gsap, ScrollTrigger, useScene } from "@/animations/gsap";
 import { industries } from "./data";
-import {
-  clamp01,
-  motions,
-  ParticleField,
-  shapes,
-  spokesState,
-  type AnchorDef,
-  type Vec,
-} from "./particles";
+import { clamp01, motions, ParticleField, shapes, type AnchorDef, type Vec } from "./particles";
+import { type IndustryForm, industryState, messToRows } from "./connection-shapes";
 import { labelsIn, mountField, ParticleStage, PLabel } from "./ParticleStage";
 
 type Industry = keyof typeof industries;
 const names = Object.keys(industries) as Industry[];
-const positions: Vec[] = [
-  [-1.4, -0.72, 0.25],
-  [1.35, -0.78, -0.25],
-  [1.8, 0.2, 0.2],
-  [0.6, 0.9, -0.25],
-  [-0.95, 0.85, 0.3],
-  [-1.85, 0.05, -0.2],
-];
 const slug = (name: string) => name.toLowerCase().replace(/\s+/g, "-");
+const ROTATE_MS = 6000;
+
+/* Each industry gets its own living formation. */
+const forms: Record<Industry, IndustryForm> = {
+  Hospitality: "orbit",
+  Healthcare: "pulse",
+  Retail: "bars",
+  "Financial Services": "trend",
+  Manufacturing: "gears",
+};
 
 function industryTarget(name: Industry, stage: Element | null) {
   const count = industries[name].nodes.length;
-  const nodes = positions.slice(0, count);
+  const { state, nodes } = industryState(forms[name]);
   const labels = labelsIn(stage);
   const anchors: AnchorDef[] = labels.map((el, index) => ({
     el,
-    at: [null, index < count ? (nodes[index] ?? null) : ([0, 0.66, 0] as Vec)],
+    at: [null, index < count ? (nodes[index] ?? null) : ([0, 1.12, 0] as Vec)],
   }));
-  return { state: spokesState(nodes, { speed: 0.00011 }), anchors };
+  return { state, anchors };
 }
 
 export function IndustryExplorer() {
@@ -49,8 +44,10 @@ export function IndustryExplorer() {
     const instance = mountField(
       stage,
       ({ desktop }) => ({
-        count: desktop ? 2600 : 1200,
+        count: desktop ? 3600 : 1600,
         theme: "dark",
+        glow: 0.18,
+        bright: true,
         radius: [0.28, 0.42],
         pointer: 0.35,
         tilt: 0.06,
@@ -109,6 +106,39 @@ export function IndustryExplorer() {
     );
   }, [active]);
 
+  const holdUntil = useRef(0);
+  const hovering = useRef(false);
+  useEffect(() => {
+    const section = ref.current;
+    if (!section) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      if (hovering.current || Date.now() < holdUntil.current) return;
+      if (!ScrollTrigger.isInViewport(section, 0.3)) return;
+      setActive((current) => names[(names.indexOf(current) + 1) % names.length] ?? current);
+    }, ROTATE_MS);
+    const enter = () => {
+      hovering.current = true;
+      section.classList.add("is-paused");
+    };
+    const leave = () => {
+      hovering.current = false;
+      section.classList.remove("is-paused");
+    };
+    const stage = section.querySelector(".industry-layout");
+    stage?.addEventListener("pointerenter", enter);
+    stage?.addEventListener("pointerleave", leave);
+    return () => {
+      window.clearInterval(timer);
+      stage?.removeEventListener("pointerenter", enter);
+      stage?.removeEventListener("pointerleave", leave);
+    };
+  }, []);
+  const choose = (name: Industry) => {
+    holdUntil.current = Date.now() + ROTATE_MS * 2;
+    setActive(name);
+  };
+
   // Slide the indicator to the selected tab.
   useEffect(() => {
     const list = tabs.current;
@@ -145,7 +175,7 @@ export function IndustryExplorer() {
     event.preventDefault();
     const name = names[(next + names.length) % names.length];
     if (!name) return;
-    setActive(name);
+    choose(name);
     tabs.current?.querySelector<HTMLElement>(`#tab-${slug(name)}`)?.focus();
   };
 
@@ -182,7 +212,7 @@ export function IndustryExplorer() {
               aria-selected={industry === active}
               aria-controls="industry-panel"
               tabIndex={industry === active ? 0 : -1}
-              onClick={() => setActive(industry)}
+              onClick={() => choose(industry)}
             >
               <span>0{index + 1}</span>
               {industry}
@@ -199,10 +229,9 @@ export function IndustryExplorer() {
             className="industry-particles"
             label={`${active.toUpperCase()} connected to ${content.nodes.join(", ")}`}
           >
-            {positions.map((_, index) => {
-              const node = content.nodes[index];
-              return node ? <PLabel key={`${active}-${node}`} index={index} title={node} /> : null;
-            })}
+            {content.nodes.map((node, index) => (
+              <PLabel key={`${active}-${node}`} index={index} title={node} />
+            ))}
             <PLabel title={active.toUpperCase()} variant="center" />
           </ParticleStage>
           <p className="industry-result">{content.result}</p>
@@ -213,129 +242,116 @@ export function IndustryExplorer() {
 }
 
 const before = [
-  "Disconnected information",
-  "Manual processes",
-  "Repeated work",
-  "Slow reporting",
-  "Scattered knowledge",
+  "Scattered information",
+  "Hours building reports",
+  "Manual work every week",
+  "Slow decisions",
 ];
 const after = [
-  "Connected information",
-  "Automated processes",
-  "Clear visibility",
-  "Faster action",
-  "Better understanding",
+  "One source of truth",
+  "Reports ready on time",
+  "Routine work handled",
+  "Confident decisions",
 ];
 
-/* Chaos on one side of the divider, order on the other. */
-const GRID = { cols: 34, rows: 14 };
+/**
+ * Before & After: a processing beam sweeps down a column of messy data.
+ * Row by row, the problem on the left is struck out, the data snaps into a
+ * clean stream, and the matching result on the right lights up.
+ */
 export function BeforeAfter() {
   const ref = useRef<HTMLElement>(null);
 
   useScene(ref, (conditions, el) => {
-    if (conditions.reduce) return;
-    el.classList.add("is-wipe");
-    const pin = el.querySelector(".ba-pin");
-    const items = gsap.utils.toArray<HTMLElement>(".before li", el);
-    const count = conditions.desktop ? 1900 : 900;
-    const per = Math.max(1, Math.floor(count / (GRID.cols * GRID.rows)));
+    const rows = before.length;
+    const { mess, order, rowOf } = messToRows(rows, 1.5, 1);
+    const progress = { value: conditions.reduce ? 1 : 0 };
+    // Row k is processed once the beam has passed its middle.
+    const rowDone = (k: number) => clamp01((progress.value * (rows + 0.6) - k - 0.3) * 2.2);
     const field = mountField(
-      el.querySelector(".ba-particles"),
-      () => ({
-        count,
+      el.querySelector(".ba-stage"),
+      ({ desktop }) => ({
+        count: desktop ? 1500 : 800,
         theme: "dark",
-        radius: [0.25, 0.5],
-        accentRatio: 0.18,
-        size: 1.8,
+        glow: 0.14,
+        bright: true,
+        accentRatio: 0.4,
+        radius: [0.5, 0.5],
         seed: 13,
-        states: [
-          { shape: shapes.cloud(2.1, 1.05, 1), motion: motions.drift(0.1) },
-          { shape: shapes.grid(GRID.cols, GRID.rows, 3.9, 1.9) },
-        ],
-        // A particle snaps into order once the divider has passed its column.
-        localMorph: (i, morph) => {
-          const col = (Math.floor(i / per) % (GRID.cols * GRID.rows)) % GRID.cols;
-          const x = col / (GRID.cols - 1);
-          return clamp01((x - (1 - morph)) * 5);
+        states: [mess, order],
+        localMorph: (i) => {
+          const k = rowDone(rowOf(i));
+          return k * k * (3 - 2 * k);
         },
       }),
       conditions,
     );
+    // Just under 1: stay between the two states so localMorph decides per particle.
+    if (field) field.morph = 0.999;
 
-    const divider = { progress: 0 };
-    const tl = gsap.timeline({
-      defaults: { ease: "none" },
-      scrollTrigger: {
-        trigger: pin,
-        start: "top top",
-        end: "+=180%",
-        pin: true,
-        scrub: 1,
-        invalidateOnRefresh: true,
-      },
-    });
-    tl.to(items, { "--strike": 1, stagger: 0.08, duration: 0.3 }, 0)
-      .fromTo(
-        ".comparison-side.after",
-        { clipPath: "inset(0% 0% 0% 100%)" },
-        { clipPath: "inset(0% 0% 0% 0%)", duration: 1, ease: "power1.inOut" },
-        0.45,
-      )
-      .fromTo(
-        ".comparison-rule",
-        { left: "100%" },
-        { left: "0%", duration: 1, ease: "power1.inOut" },
-        0.45,
-      )
-      .to(
-        divider,
-        {
-          progress: 1,
-          duration: 1,
-          ease: "power1.inOut",
-          onUpdate: () => {
-            if (field) field.morph = divider.progress;
-          },
-        },
-        0.45,
-      )
-      .from(".before-after h2", { yPercent: 40, autoAlpha: 0, duration: 0.4 }, 0.2)
-      .to({}, { duration: 0.25 });
-
-    return () => {
-      field?.destroy();
-      el.classList.remove("is-wipe");
+    const lefts = gsap.utils.toArray<HTMLElement>(".ba-before li", el);
+    const rights = gsap.utils.toArray<HTMLElement>(".ba-after li", el);
+    const beam = el.querySelector<HTMLElement>(".ba-beam");
+    const paint = () => {
+      for (let k = 0; k < rows; k++) {
+        const done = rowDone(k);
+        lefts[k]?.style.setProperty("--done", done.toFixed(3));
+        rights[k]?.style.setProperty("--done", done.toFixed(3));
+      }
+      if (beam)
+        beam.style.top = `${Math.min(progress.value * 100 * ((rows + 0.6) / rows) - 7, 100)}%`;
+      el.classList.toggle("is-done", progress.value > 0.97);
     };
+    paint();
+    if (conditions.reduce) return () => field?.destroy();
+
+    gsap.to(progress, {
+      value: 1,
+      ease: "none",
+      onUpdate: paint,
+      scrollTrigger: conditions.desktop
+        ? {
+            trigger: el.querySelector(".ba-pin"),
+            start: "top top",
+            end: "+=200%",
+            pin: true,
+            scrub: 1,
+          }
+        : { trigger: el.querySelector(".ba-grid"), start: "top 70%", end: "bottom 45%", scrub: 1 },
+    });
+    return () => field?.destroy();
   });
 
   return (
-    <section className="before-after" ref={ref}>
+    <section className="before-after ba2" id="difference" ref={ref}>
       <div className="ba-pin">
-        <div className="comparison-side before">
-          <p>BEFORE</p>
-          <ul>
-            {before.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="comparison-rule" aria-hidden="true">
-          <i />
-        </div>
-        <div className="comparison-side after">
-          <p>AFTER</p>
-          <ul>
-            {after.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <ParticleStage className="ba-particles" />
-        <h2>
+        <h2 data-split>
           From moving information
           <br />
           to <em>using it.</em>
         </h2>
+        <div className="ba-grid">
+          <div className="ba-col ba-before">
+            <p className="ba-label">Before</p>
+            <ul>
+              {before.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="ba-center" aria-hidden="true">
+            <ParticleStage className="ba-stage" />
+            <i className="ba-beam" />
+          </div>
+          <div className="ba-col ba-after">
+            <p className="ba-label">After</p>
+            <ul>
+              {after.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { gsap, useScene } from "@/animations/gsap";
 import { fireIntro } from "@/animations/intro";
 import { setScrollLock } from "@/animations/smooth";
-import { imageShape, motions, ParticleField, sampleImage, shapes } from "./particles";
+import { imageShape, motions, ParticleField, rainState, sampleImage } from "./particles";
 
 const SEEN_KEY = "qdl-intro-seen";
 
@@ -24,7 +24,6 @@ export function Preloader() {
     let seen = false;
     try {
       seen = sessionStorage.getItem(SEEN_KEY) === "1";
-      sessionStorage.setItem(SEEN_KEY, "1");
     } catch {
       /* storage unavailable: play the full intro */
     }
@@ -45,23 +44,29 @@ export function Preloader() {
       tl = gsap.timeline({
         defaults: { ease: "story" },
         onComplete: () => {
+          // Only a finished intro counts as seen (dev mode runs setup twice).
+          try {
+            sessionStorage.setItem(SEEN_KEY, "1");
+          } catch {
+            /* storage unavailable */
+          }
           el.style.display = "none";
           field?.destroy();
           setScrollLock("intro", false);
         },
       });
       if (field) {
-        tl.to(field, { fade: 1, duration: 0.8, ease: "power2.out" }, 0).to(
+        tl.to(field, { fade: 1, duration: 0.5, ease: "power2.out" }, 0).to(
           field,
-          { morph: 1, duration: full ? 2.3 : 1.2, ease: "power3.inOut" },
-          0.2,
+          { morph: 1, duration: full ? 1.6 : 0.9, ease: "power2.inOut" },
+          full ? 0.55 : 0.2,
         );
       }
       tl.to(
         counter,
         {
           value: 100,
-          duration: full ? 2.6 : 1.4,
+          duration: full ? 1.8 : 1,
           ease: "power2.inOut",
           onUpdate: () => {
             if (count) count.textContent = String(Math.round(counter.value)).padStart(3, "0");
@@ -72,18 +77,19 @@ export function Preloader() {
         .fromTo(
           el.querySelector(".preloader-bar i"),
           { scaleX: 0 },
-          { scaleX: 1, duration: full ? 2.6 : 1.4, ease: "power2.inOut" },
+          { scaleX: 1, duration: full ? 1.8 : 1, ease: "power2.inOut" },
           0,
         )
         .fromTo(
           wordmark,
           { clipPath: "inset(0% 100% 0% 0%)", y: 12 },
-          { clipPath: "inset(0% 0% 0% 0%)", y: 0, duration: 1, ease: "storyOut" },
-          full ? 2.1 : 1.1,
+          { clipPath: "inset(0% 0% 0% 0%)", y: 0, duration: 0.8, ease: "storyOut" },
+          full ? 1.2 : 0.55,
         )
-        .to({}, { duration: full ? 0.9 : 0.35 })
-        .to(el, { clipPath: "inset(0% 0% 100% 0%)", duration: 1.1 })
-        .call(fireIntro, [], "-=0.6");
+        // Hold on the finished logo for a beat, then lift the curtain.
+        .to({}, { duration: full ? 0.35 : 0.15 })
+        .to(el, { clipPath: "inset(0% 0% 100% 0%)", duration: 0.8 })
+        .call(fireIntro, [], "-=0.5");
     };
 
     // Sample the real symbol, then let the particles find their places in it.
@@ -96,10 +102,18 @@ export function Preloader() {
             theme: "dark",
             glow: 0.16,
             radius: [0.45, 0.3],
+            bright: true,
             accentFor: (i) => sample.accent[i % sample.accent.length] ?? false,
             seed: 3,
+            // Data rains down the screen, then gathers into the logo, top first.
+            localMorph: (i, morph) => {
+              const landY = sample.points[i % sample.points.length]?.[1] ?? 0.5;
+              const k = morph * 1.7 - landY * 0.55 - (((i * 37) % 100) / 100) * 0.15;
+              const c = k < 0 ? 0 : k > 1 ? 1 : k;
+              return c * c * (3 - 2 * c);
+            },
             states: [
-              { shape: shapes.nebula(2.2, 1.3, 1), motion: motions.swirl(0.00035, 0.03) },
+              rainState({ width: 3.7, top: -1.8, bottom: 1.8 }),
               {
                 shape: (i, n, r) => {
                   const p = imageShape(sample, 1.6)(i, n, r);

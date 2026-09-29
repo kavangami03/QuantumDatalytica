@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { gsap, ScrollTrigger, SplitText, useScene } from "@/animations/gsap";
 import {
   imageShape,
+  rainState,
   loopState,
   motions,
   onLoop,
@@ -14,33 +15,35 @@ import {
   type Vec,
 } from "./particles";
 import {
-  circulatingTorus,
+  branchRadar,
+  customerOrbits,
   gatheringHub,
   hourglass,
-  orbitingSegments,
   packetLanes,
-  risingBars,
+  selfBuildingReport,
 } from "./metaphors";
 import { labelsIn, mountField, ParticleStage, PLabel } from "./ParticleStage";
 import { StoryButton } from "./StoryButton";
+import { type IconKind, scatteredIconsState, webState } from "./connection-shapes";
+import { DEMO_URL } from "./Navigation";
 
 type Scenario =
   "behavior" | "performance" | "automation" | "connection" | "bottleneck" | "workflow";
 
 const scenarios: ReadonlyArray<readonly [string, Scenario]> = [
-  ["Understand customer behavior.", "behavior"],
-  ["Monitor business performance.", "performance"],
-  ["Automate recurring processes.", "automation"],
-  ["Bring information together.", "connection"],
-  ["Identify operational bottlenecks.", "bottleneck"],
-  ["Create consistent workflows.", "workflow"],
+  ["Understand customers", "behavior"],
+  ["Watch every branch", "performance"],
+  ["Reports that build themselves", "automation"],
+  ["Bring information together", "connection"],
+  ["Find what slows you down", "bottleneck"],
+  ["Keep teams aligned", "workflow"],
 ];
 
 /* One small, living sculpture per scenario, each acting out its sentence. */
 const metaphors: Record<Scenario, () => StateDef> = {
-  behavior: orbitingSegments,
-  performance: risingBars,
-  automation: circulatingTorus,
+  behavior: customerOrbits,
+  performance: branchRadar,
+  automation: selfBuildingReport,
   connection: gatheringHub,
   bottleneck: hourglass,
   workflow: packetLanes,
@@ -108,9 +111,10 @@ export function UseCases() {
       return mountField(
         card.querySelector(".scenario-particles"),
         ({ desktop }) => ({
-          count: desktop ? 1100 : 700,
+          count: desktop ? 1600 : 900,
           theme: "dark",
-          glow: 0.14,
+          glow: 0.2,
+          bright: true,
           accentRatio: 0.42,
           radius: [0.3, 0.4],
           size: 1.15,
@@ -169,7 +173,7 @@ export function UseCases() {
   });
 
   return (
-    <section className="use-cases chapter" ref={ref}>
+    <section className="use-cases chapter" id="uses" ref={ref}>
       <div className="split-heading">
         <h2 data-split>
           Built around the way
@@ -203,6 +207,29 @@ const ecosystemNodes: Array<[string, Vec]> = [
   ["PERFORMANCE", [-0.05, 1.02, 0.4]],
 ];
 
+const ecosystemKinds: IconKind[] = [
+  "person",
+  "boxes",
+  "chart",
+  "chat",
+  "grid",
+  "stack",
+  "note",
+  "page",
+];
+/* Before: the eight areas scattered and unconnected. */
+const ecosystemApart: Vec[] = [
+  [-2.3, -0.55, 0],
+  [-0.9, -0.85, 0],
+  [0.8, -0.8, 0],
+  [2.3, -0.5, 0],
+  [2.1, 0.6, 0],
+  [0.7, 0.85, 0],
+  [-0.9, 0.8, 0],
+  [-2.2, 0.55, 0],
+];
+const ringAngle = (k: number) => (k / ecosystemNodes.length) * Math.PI * 2 - Math.PI / 2;
+
 export function Ecosystem() {
   const ref = useRef<HTMLElement>(null);
 
@@ -211,84 +238,113 @@ export function Ecosystem() {
     const labels = labelsIn(stage);
     const nodeLabels = labels.slice(0, ecosystemNodes.length);
     const centerLabel = labels[ecosystemNodes.length];
-    const nodes = ecosystemNodes.map(([, position]) => position);
-    const orbit = loopState({ radius: 1.55, speed: 0.00012, tilt: 1.18 });
+    let field: ParticleField | null = null;
+    let cancelled = false;
+    const progress = { morph: conditions.reduce ? 1 : 0 };
 
-    const field = mountField(
-      stage,
-      ({ desktop }) => ({
-        count: desktop ? 3200 : 1400,
-        theme: "dark",
-        radius: [0.2, 0.36],
-        pointer: 0.35,
-        tilt: 0.05,
-        seed: 71,
-        states: [
-          // one compact core…
-          { shape: shapes.sphere(0.24), motion: motions.spin(0.0005) },
-          // …expands into every part of the business…
-          spokesState(nodes, { speed: 0.0001 }),
-          // …and settles into one orbit around it.
-          orbit,
-        ],
-        anchors: [
-          ...nodeLabels.map((label, index) => ({
-            el: label,
-            at: [null, nodes[index] ?? null, onLoop((index / ecosystemNodes.length) * Math.PI * 2)],
-          })),
-          ...(centerLabel
-            ? [{ el: centerLabel, at: [[0, 0.5, 0] as Vec, [0, 0.66, 0] as Vec, [0, 0, 0] as Vec] }]
-            : []),
-        ],
-      }),
-      conditions,
-    );
-    if (!field || conditions.reduce) return () => field?.destroy();
-
-    field.morph = 0;
-    if (!conditions.desktop) {
-      gsap.to(field, {
-        morph: 2,
-        ease: "none",
-        scrollTrigger: { trigger: stage, start: "top 80%", end: "bottom 30%", scrub: 1 },
+    sampleImage("/brand/symbol-on-dark.svg")
+      .catch(() => undefined)
+      .then((logo) => {
+        if (cancelled) return;
+        const web = webState(ecosystemKinds, logo ?? undefined, {
+          rx: conditions.desktop ? 1.95 : 1.15,
+          ry: conditions.desktop ? 0.75 : 0.95,
+        });
+        field = mountField(
+          stage,
+          ({ desktop }) => ({
+            count: desktop ? 5200 : 2400,
+            theme: "dark",
+            glow: 0.18,
+            bright: true,
+            radius: desktop ? [0.2, 0.36] : [0.4, 0.36],
+            pointer: 0.3,
+            tilt: 0.05,
+            seed: 71,
+            accentFor: web.accentFor,
+            states: [scatteredIconsState(ecosystemKinds, ecosystemApart), web],
+            anchors: [
+              ...nodeLabels.map((label, index) => ({
+                el: label,
+                at: [
+                  ecosystemApart[index]
+                    ? ([ecosystemApart[index][0], ecosystemApart[index][1] + 0.34, 0] as Vec)
+                    : null,
+                  [ringAngle(index), 0, 0] as Vec,
+                ],
+              })),
+              ...(centerLabel ? [{ el: centerLabel, at: [null, null] }] : []),
+            ],
+          }),
+          conditions,
+        );
+        if (field && !conditions.reduce) field.morph = progress.morph;
       });
-      return () => field.destroy();
+    if (conditions.reduce) {
+      return () => {
+        cancelled = true;
+        field?.destroy();
+      };
     }
 
+    // Scroll joins the scattered areas into one living system.
     gsap
       .timeline({
         defaults: { ease: "power1.inOut" },
-        scrollTrigger: {
-          trigger: el.querySelector(".ecosystem-pin"),
-          start: "top top",
-          end: "+=220%",
-          pin: true,
-          scrub: 1,
+        scrollTrigger: conditions.desktop
+          ? {
+              trigger: el.querySelector(".ecosystem-pin"),
+              start: "top top",
+              end: "+=180%",
+              pin: true,
+              scrub: 1,
+            }
+          : { trigger: stage, start: "top 80%", end: "bottom 40%", scrub: 1 },
+      })
+      .to(progress, {
+        morph: 1,
+        duration: 1,
+        onUpdate: () => {
+          if (field) field.morph = progress.morph;
         },
       })
-      .to(field, { morph: 1, duration: 1 })
-      .to({}, { duration: 0.3 })
-      .to(field, { morph: 2, duration: 1 })
-      .to(".ecosystem-heading", { autoAlpha: 0, y: -30, duration: 0.5 }, 0.15)
+      .from(
+        el.querySelectorAll(".outcome-chips li"),
+        { x: 40, autoAlpha: 0, stagger: 0.1, duration: 0.3 },
+        0.75,
+      )
       .to({}, { duration: 0.3 });
-    return () => field.destroy();
+    return () => {
+      cancelled = true;
+      field?.destroy();
+    };
   });
 
   return (
-    <section className="ecosystem chapter" ref={ref} data-chapter="07">
+    <section className="ecosystem chapter" id="one-view" ref={ref} data-chapter="07">
       <div className="ecosystem-pin">
         <div className="chapter-number">
           <span>07 / ONE VIEW</span>
           <i data-rule />
         </div>
         <div className="ecosystem-heading">
-          <p className="kicker">Everything in context</p>
           <h2 data-split>
             One business.
             <br />
             <em>One connected story.</em>
           </h2>
+          <p className="section-lead" data-reveal>
+            Every branch connected. Every team aligned.
+          </p>
         </div>
+        <ul className="outcome-chips" aria-label="What changes">
+          {["Business improves", "Less stress", "Clearer decisions"].map((chip) => (
+            <li key={chip}>
+              <i aria-hidden="true" />
+              {chip}
+            </li>
+          ))}
+        </ul>
         <ParticleStage
           className="ecosystem-stage"
           label={`YOUR BUSINESS connected to ${ecosystemNodes.map(([label]) => label).join(", ")}`}
@@ -303,44 +359,96 @@ export function Ecosystem() {
   );
 }
 
-export function FinalCTA() {
+/** The closing invitation, then (in order) anything passed in, then the footer. */
+export function FinalCTA({ children }: { children?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useScene(ref, (conditions, el) => {
-    // Everything the page has shown gathers into one mark: the company that connects it.
-    const section = el.querySelector(".final-cta");
+    // Data pours down the screen, then is caught drop by drop into the logo, top first.
+    const section = el.querySelector<HTMLElement>(".final-cta");
     const stage = el.querySelector(".final-particles");
     const canvas = stage?.querySelector<HTMLCanvasElement>(".p-canvas");
+    const copy = el.querySelectorAll<HTMLElement>(".final-copy > *");
+    const heading = el.querySelector<HTMLElement>(".final-copy h2");
     let field: ParticleField | null = null;
     let cancelled = false;
+    const headingSplit =
+      heading && !conditions.reduce
+        ? SplitText.create(heading, { type: "lines", mask: "lines", linesClass: "split-line" })
+        : null;
+
+    // The pin is created now, in page order; the particles attach whenever the logo is sampled.
+    const progress = { morph: 0 };
+    if (!conditions.reduce) {
+      gsap
+        .timeline({
+          defaults: { ease: "none" },
+          scrollTrigger: conditions.desktop
+            ? { trigger: section, start: "top top", end: "+=170%", pin: true, scrub: 1 }
+            : { trigger: section, start: "top 70%", end: "bottom 80%", scrub: 1 },
+        })
+        .to(
+          progress,
+          {
+            morph: 1,
+            duration: 1,
+            onUpdate: () => {
+              if (field) field.morph = progress.morph;
+            },
+          },
+          0.1,
+        )
+        .from(
+          headingSplit?.lines ?? heading ?? [],
+          { yPercent: 110, stagger: 0.06, duration: 0.25, ease: "power3.out" },
+          0.95,
+        )
+        .from(
+          Array.from(copy).slice(1),
+          { y: 30, autoAlpha: 0, stagger: 0.08, duration: 0.25 },
+          1.1,
+        )
+        .to({}, { duration: 0.25 });
+    }
+
     if (canvas) {
       sampleImage("/brand/symbol-on-dark.svg")
         .then((sample) => {
           if (cancelled) return;
+          // Where each particle lands, top (0) to bottom (1) of the logo.
+          const landY = (i: number) => sample.points[i % sample.points.length]?.[1] ?? 0.5;
           field = new ParticleField(canvas, {
-            count: conditions.desktop ? 3200 : 1600,
+            count: conditions.desktop ? 4800 : 2200,
             theme: "dark",
-            glow: 0.16,
+            glow: 0.2,
+            bright: true,
+            size: 1.3,
             radius: [0.4, 0.44],
-            pointer: 0.3,
+            pointer: 0.15,
             accentFor: (i) => sample.accent[i % sample.accent.length] ?? false,
             seed: 97,
+            localMorph: (i, morph) => {
+              const k = morph * 1.7 - landY(i) * 0.55 - (((i * 37) % 100) / 100) * 0.15;
+              const c = k < 0 ? 0 : k > 1 ? 1 : k;
+              return c * c * (3 - 2 * c);
+            },
             states: [
-              { shape: shapes.nebula(2.4, 1.2, 1), motion: motions.swirl(0.0003, 0.03) },
-              { shape: imageShape(sample, 2.7), motion: motions.drift(0.005) },
+              rainState({ width: 2.8, top: -1.35, bottom: 1.35 }),
+              {
+                shape: (i, n, r) => {
+                  const p = imageShape(sample, 1.35)(i, n, r);
+                  return [p[0], p[1] - 0.58, p[2]];
+                },
+                motion: motions.drift(0.004),
+              },
             ],
           });
           if (conditions.reduce) {
             field.still(1);
             return;
           }
-          field.morph = 0;
+          field.morph = progress.morph;
           field.start();
-          gsap.to(field, {
-            morph: 1,
-            ease: "none",
-            scrollTrigger: { trigger: section, start: "top 75%", end: "center 60%", scrub: 1 },
-          });
         })
         .catch(() => undefined);
     }
@@ -365,6 +473,7 @@ export function FinalCTA() {
       cancelled = true;
       field?.destroy();
       split?.revert();
+      headingSplit?.revert();
     };
   });
 
@@ -372,34 +481,33 @@ export function FinalCTA() {
     <div ref={ref}>
       <section className="final-cta chapter" id="contact" data-chapter="08">
         <div className="chapter-number">
-          <span>08 / CONTACT</span>
+          <span>08 / LET’S TALK</span>
           <i data-rule />
         </div>
         <ParticleStage
           className="final-particles"
           label="Everything connected into QuantumDataLytica"
         />
-        <h2 data-split>
-          Your data already
-          <br />
-          tells a <em>story.</em>
-        </h2>
-        <p data-reveal>
-          We help you understand it, connect it,
-          <br />
-          and turn it into action.
-        </p>
-        <div className="hero-actions" data-reveal>
-          <StoryButton href="mailto:hello@quantumdatalytica.com" icon={<ArrowUpRight />}>
-            Talk to us
-          </StoryButton>
-          <StoryButton href="#industries" variant="storyOutline">
-            Explore what we can do
-          </StoryButton>
+        <div className="final-copy">
+          <h2>
+            Your data already
+            <br />
+            tells a <em>story.</em>
+          </h2>
+          <p>Let’s find out what yours is saying.</p>
+          <div className="hero-actions">
+            <StoryButton href={DEMO_URL} icon={<ArrowUpRight />} track="demo">
+              Book a demo
+            </StoryButton>
+            <StoryButton href="#industries" variant="storyOutline">
+              Explore industries
+            </StoryButton>
+          </div>
         </div>
       </section>
+      {children}
       <footer className="footer">
-        <div className="footer-grid">
+        <div className="footer-grid" style={{ "--cols": 3 } as CSSProperties}>
           <div className="footer-brand">
             <a className="brand" href="#top">
               <img
@@ -420,27 +528,29 @@ export function FinalCTA() {
             <strong>Navigate</strong>
             <a href="#problem">What we solve</a>
             <a href="#transformation">How it works</a>
+            <a href="#industries">Industries</a>
             <a href="#impact">Business impact</a>
-          </div>
-          <div>
-            <strong>Industries</strong>
-            <a href="#industries">Hospitality</a>
-            <a href="#industries">Healthcare</a>
-            <a href="#industries">Retail & more</a>
+            <a href="#faq">FAQ</a>
           </div>
           <div>
             <strong>Contact</strong>
-            <a href="mailto:hello@quantumdatalytica.com">
-              Email <ArrowUpRight />
+            <a href={DEMO_URL} data-track="demo">
+              Book a demo <ArrowUpRight />
             </a>
+            <a href="mailto:info@quantumdatalytica.com">info@quantumdatalytica.com</a>
+            <a href="tel:+15127333085">+1 (512) 733-3085</a>
             <span>LinkedIn</span>
-            <span>Privacy</span>
+          </div>
+          <div>
+            <strong>Legal</strong>
+            <a href="/privacy-policy/">Privacy Policy</a>
+            <a href="/terms-and-conditions/">Terms &amp; Conditions</a>
           </div>
         </div>
         <p className="footer-wordmark" aria-hidden="true">
           QuantumDataLytica
         </p>
-        <small>© {new Date().getFullYear()} QuantumDataLytica</small>
+        <small>© 2026 QuantumDataLytica</small>
       </footer>
     </div>
   );

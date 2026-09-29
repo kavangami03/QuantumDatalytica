@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { gsap, ScrollTrigger, useScene } from "@/animations/gsap";
 
-/** An endless band of words whose speed and direction follow the scroll. */
+/** An endless band of words moving right to left; scrolling speeds it up. */
 export function Marquee({
   words,
   tone = "light",
@@ -22,8 +22,8 @@ export function Marquee({
       end: "bottom top",
       onUpdate: (self) => {
         const boost = Math.min(Math.abs(self.getVelocity()) / 250, 6);
-        gsap.to(loop, { timeScale: self.direction * (1 + boost), duration: 0.3, overwrite: true });
-        gsap.to(loop, { timeScale: self.direction, duration: 1.2, delay: 0.3, overwrite: false });
+        gsap.to(loop, { timeScale: 1 + boost, duration: 0.3, overwrite: true });
+        gsap.to(loop, { timeScale: 1, duration: 1.2, delay: 0.3, overwrite: false });
       },
       onToggle: (self) => (self.isActive ? loop.play() : loop.pause()),
     });

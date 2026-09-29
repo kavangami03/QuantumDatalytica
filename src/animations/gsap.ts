@@ -3,9 +3,10 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
 import { CustomEase } from "gsap/CustomEase";
+import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { useEffect, useLayoutEffect, type DependencyList, type RefObject } from "react";
 
-gsap.registerPlugin(ScrollTrigger, SplitText, ScrambleTextPlugin, CustomEase);
+gsap.registerPlugin(ScrollTrigger, SplitText, ScrambleTextPlugin, CustomEase, MotionPathPlugin);
 
 CustomEase.create("story", "0.7, 0, 0.15, 1");
 CustomEase.create("storyOut", "0.16, 1, 0.3, 1");
@@ -69,4 +70,8 @@ export function splitReveal(
       });
     },
   });
+}
+
+if (import.meta.env.DEV && typeof window !== "undefined") {
+  (window as unknown as { __ST: typeof ScrollTrigger }).__ST = ScrollTrigger;
 }

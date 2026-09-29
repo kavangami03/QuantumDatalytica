@@ -1,102 +1,82 @@
 import { useRef } from "react";
 import { gsap, SplitText, useScene } from "@/animations/gsap";
-import { frac, motions, shapes, spokesState, type StateDef, type Vec } from "./particles";
+import {
+  frac,
+  motions,
+  type ParticleField,
+  sampleImage,
+  shapes,
+  spokesState,
+  type StateDef,
+  type Vec,
+} from "./particles";
 import { labelsIn, mountField, ParticleStage, PLabel } from "./ParticleStage";
-import { businessNodes } from "./data";
+import {
+  coreState,
+  type Fault,
+  faultsState,
+  type IconKind,
+  iconsState,
+  type LogoSample,
+} from "./connection-shapes";
 
-const fragments = [
-  "CRM",
-  "Spreadsheet",
-  "Sales",
-  "Operations",
-  "Finance",
-  "Marketing",
-  "Feedback",
-  "Inventory",
+/* Each source and what goes wrong with it (tags drive how its column behaves). */
+const sources = [
+  ["Branch reports", "DELAYED"],
+  ["Spreadsheets", "DUPLICATE"],
+  ["Documents", "SCATTERED"],
+  ["Handover notes", "LOST"],
+  ["Customer records", "DISCONNECTED"],
+  ["Finance", "DELAYED"],
+  ["Feedback", "UNREAD"],
+  ["Inventory", "OUT OF DATE"],
+] as const;
+const fragments = sources.map(([name]) => name);
+/** 0 · a twin copy, 1 · a crawling flow, 2 · broken into pieces. */
+const siloKind = (tag: string) =>
+  tag === "DUPLICATE" ? 0 : tag === "DELAYED" || tag === "OUT OF DATE" ? 1 : 2;
+const stressChips = [
+  "Too many branches",
+  "Too many reports",
+  "Slow decisions",
+  "Constant pressure",
 ];
-const fragmentTags = ["DUPLICATE", "DELAYED", "DISCONNECTED"];
+const connectionNodes = [
+  "Branch reports",
+  "Documents",
+  "Spreadsheets",
+  "Handover notes",
+  "Customers",
+  "Finance",
+];
 
-/* Eight silos: each keeps its data moving, none of it reaches the others. */
-type Silo = { x: number; y: number; h: number; r: number; kind: number };
-
-const silosDesktop: Silo[] = fragments.map((_, index) => ({
-  x: -2.1 + index * 0.6,
-  y: -0.08,
-  h: 1.5,
-  r: 0.13,
-  kind: index % 3,
-}));
-const silosPhone: Silo[] = fragments.map((_, index) => ({
-  x: -1.2 + (index % 4) * 0.8,
-  y: index < 4 ? -0.85 : 0.95,
-  h: 0.95,
-  r: 0.1,
-  kind: index % 3,
-}));
-
-/**
- * Each silo is a glowing glass column: data spirals up inside it, bright rings
- * cap it top and bottom, and a few drops leak toward the neighbour and fall away.
- *   kind 0 · DUPLICATE     two columns holding the same data
- *   kind 1 · DELAYED       the same flow, crawling
- *   kind 2 · DISCONNECTED  the column is broken into separate blocks
- */
-function silosState(silos: Silo[]): StateDef {
-  const silo: number[] = [];
-  const role: number[] = [];
-  const u0: number[] = [];
-  const a0: number[] = [];
-  const twin: number[] = [];
-  return {
-    shape: (i, _n, r) => {
-      silo[i] = i % silos.length;
-      const roll = r();
-      role[i] = roll < 0.78 ? 0 : roll < 0.9 ? 1 : 2;
-      u0[i] = r();
-      a0[i] = r() * Math.PI * 2;
-      twin[i] = r() < 0.45 ? 1 : 0;
-      return [0, 0, 0];
-    },
-    motion: (i, t, p) => {
-      const s = silos[silo[i] ?? 0];
-      if (!s) return;
-      const top = s.y - s.h / 2;
-      const bottom = s.y + s.h / 2;
-      const isTwin = s.kind === 0 && twin[i] === 1;
-      const cx = s.kind === 0 ? s.x + (isTwin ? 0.11 : -0.07) : s.x;
-      const rad = s.kind === 0 ? s.r * 0.72 : s.r;
-      const slow = s.kind === 1;
-      const spin = (a0[i] ?? 0) + t * (slow ? 0.00025 : 0.0009);
-
-      if (role[i] === 2) {
-        // A drop that leaves for the neighbour and falls before it arrives.
-        const u = frac((u0[i] ?? 0) + t * 0.00028);
-        p[0] = cx + rad + u * 0.2;
-        p[1] = top + 0.25 + ((a0[i] ?? 0) / 6.3) * s.h * 0.5 + u * u * 0.55;
-        p[2] = 0;
-        return;
-      }
-      if (role[i] === 1) {
-        // Bright rings capping the column.
-        const y = (u0[i] ?? 0) < 0.5 ? top : bottom;
-        p[0] = cx + Math.cos(spin) * rad * 1.08;
-        p[1] = y;
-        p[2] = Math.sin(spin) * rad * 1.08;
-        return;
-      }
-      let u = frac((u0[i] ?? 0) + t * (slow ? 0.00004 : 0.00016));
-      if (s.kind === 2) {
-        // Three blocks separated by gaps.
-        const seg = Math.floor(u * 3);
-        u = (seg + (u * 3 - seg) * 0.7) / 3;
-      }
-      const shell = 0.55 + 0.45 * Math.sqrt(frac((u0[i] ?? 0) * 7.13));
-      p[0] = cx + Math.cos(spin) * rad * shell;
-      p[1] = bottom - u * s.h;
-      p[2] = Math.sin(spin) * rad * shell;
-    },
-  };
-}
+/* Each source becomes an icon that visibly suffers its problem. */
+const sourceKinds: IconKind[] = [
+  "stack",
+  "grid",
+  "page",
+  "note",
+  "person",
+  "chart",
+  "chat",
+  "boxes",
+];
+const faultOf: Record<string, Fault> = {
+  DELAYED: "delayed",
+  DUPLICATE: "duplicate",
+  SCATTERED: "scattered",
+  LOST: "lost",
+  DISCONNECTED: "disconnected",
+  UNREAD: "unread",
+  "OUT OF DATE": "outdated",
+};
+const sourceFaults = sources.map(([, tag]) => faultOf[tag] ?? "scattered");
+const gridDesktop: Vec[] = [-0.62, 0.46].flatMap((y) =>
+  [-2.1, -0.7, 0.7, 2.1].map((x) => [x, y, 0] as Vec),
+);
+const gridPhone: Vec[] = [-1.5, -0.5, 0.5, 1.5].flatMap((y) =>
+  [-0.62, 0.62].map((x) => [x, y, 0] as Vec),
+);
 
 export function ProblemScene() {
   const ref = useRef<HTMLElement>(null);
@@ -104,13 +84,15 @@ export function ProblemScene() {
   useScene(ref, (conditions, el) => {
     const stage = el.querySelector(".problem-stage");
     const labels = labelsIn(stage);
-    const silos = conditions.desktop ? silosDesktop : silosPhone;
+    const places = conditions.desktop ? gridDesktop : gridPhone;
     const field = mountField(
       stage,
       ({ desktop }) => ({
-        count: desktop ? 5200 : 2200,
+        count: desktop ? 5600 : 2400,
         theme: "dark",
-        glow: 0.15,
+        glow: 0.18,
+        bright: true,
+        size: 1.2,
         radius: desktop ? [0.2, 0.4] : [0.42, 0.24],
         pointer: 0.06,
         tilt: 0,
@@ -119,12 +101,12 @@ export function ProblemScene() {
         states: [
           // everything at once: one dense, restless mass of data
           { shape: shapes.nebula(1.7, 1.05, 0.9), motion: motions.swirl(0.00028, 0.03) },
-          // …that is really eight silos that never meet
-          silosState(silos),
+          // …that is really eight sources, each broken in its own way
+          faultsState(places, sourceKinds, sourceFaults, conditions.desktop ? 1.05 : 1),
         ],
         anchors: labels.map((label, index) => {
-          const s = silos[index];
-          return { el: label, at: [null, s ? ([s.x, s.y + s.h / 2 + 0.16, 0] as Vec) : null] };
+          const at = places[index];
+          return { el: label, at: [null, at ? ([at[0], at[1] + 0.38, 0] as Vec) : null] };
         }),
       }),
       conditions,
@@ -162,18 +144,18 @@ export function ProblemScene() {
   return (
     <section className="problem chapter" id="problem" ref={ref} data-chapter="01">
       <div className="chapter-number">
-        <span>01 / CONTEXT</span>
+        <span>01 / THE REALITY</span>
         <i data-rule />
       </div>
       <header className="problem-head">
-        <p className="kicker" data-reveal>
-          The reality
-        </p>
         <h2 data-split>
           Your business isn’t short on data.
           <br />
           <em>It’s short on clarity.</em>
         </h2>
+        <p className="section-lead" data-reveal>
+          Reports from every branch. Files in every team. <strong>Answers nowhere.</strong>
+        </p>
       </header>
       <div className="problem-bleed">
         <ParticleStage
@@ -185,12 +167,20 @@ export function ProblemScene() {
               key={fragment}
               index={index}
               title={fragment}
-              tag={fragmentTags[index % 3]}
+              tag={sources[index]?.[1]}
               variant="column"
             />
           ))}
         </ParticleStage>
       </div>
+      <ul className="stress-chips" aria-label="What it feels like">
+        {stressChips.map((chip) => (
+          <li key={chip} data-reveal>
+            <i aria-hidden="true" />
+            {chip}
+          </li>
+        ))}
+      </ul>
       <p className="statement" data-fill>
         More information doesn’t always mean <em>better decisions.</em>
       </p>
@@ -207,7 +197,11 @@ const hubNodes: Vec[] = [
   [-1.3, 0.8, 0.3],
   [-2.05, 0, -0.2],
 ];
-const apart = hubNodes.map(([x, y, z]) => [x * 1.18, y * 1.25, z * 2] as Vec);
+const apart = hubNodes.map(([x, y, z]) => [x * 1.18, y * 0.82 - 0.1, z * 2] as Vec);
+const connectionKinds: IconKind[] = ["stack", "page", "grid", "note", "person", "chart"];
+/** A point just below a node, for its label. */
+const offset = (at: Vec | undefined, dy: number): Vec | null =>
+  at ? [at[0], at[1] + dy, at[2]] : null;
 
 export function ConnectionScene() {
   const ref = useRef<HTMLElement>(null);
@@ -217,75 +211,97 @@ export function ConnectionScene() {
     const labels = labelsIn(stage);
     const nodeLabels = labels.slice(0, hubNodes.length);
     const centerLabel = labels[hubNodes.length];
-    const field = mountField(
-      stage,
-      ({ desktop }) => ({
-        count: desktop ? 3400 : 1400,
-        theme: "dark",
-        radius: [0.21, 0.42],
-        pointer: 0.35,
-        tilt: 0.08,
-        seed: 23,
-        states: [
-          {
-            shape: shapes.clusters(apart, [0.2, 0.13, 0.2], 0.18, [2.6, 1.2, 1.2]),
-            motion: motions.drift(0.04),
-          },
-          spokesState(hubNodes, { speed: 0.0001 }),
-        ],
-        anchors: [
-          ...nodeLabels.map((label, index) => ({
-            el: label,
-            at: [apart[index] ?? null, hubNodes[index] ?? null],
-          })),
-          ...(centerLabel ? [{ el: centerLabel, at: [null, [0, 0.66, 0] as Vec] }] : []),
-        ],
-      }),
-      conditions,
-    );
-    if (!field || conditions.reduce) return () => field?.destroy();
+    let field: ParticleField | null = null;
+    let cancelled = false;
+    const progress = { morph: 0 };
 
+    const build = (logo?: LogoSample) => {
+      if (cancelled) return;
+      const core = coreState(hubNodes, connectionKinds, logo);
+      field = mountField(
+        stage,
+        ({ desktop }) => ({
+          count: desktop ? 4600 : 2000,
+          theme: "dark",
+          glow: 0.18,
+          bright: true,
+          radius: [0.21, 0.42],
+          pointer: 0.35,
+          tilt: 0.08,
+          seed: 23,
+          accentFor: (i) => core.accentFor(i) || (i * 7) % 10 < 2,
+          states: [iconsState(apart, connectionKinds), core],
+          anchors: [
+            ...nodeLabels.map((label, index) => ({
+              el: label,
+              at: [offset(apart[index], 0.36), offset(hubNodes[index], 0.3)],
+            })),
+            ...(centerLabel ? [{ el: centerLabel, at: [null, [0, 0.62, 0] as Vec] }] : []),
+          ],
+        }),
+        conditions,
+      );
+      if (field && !conditions.reduce) field.morph = progress.morph;
+    };
+    sampleImage("/brand/symbol-on-dark.svg")
+      .then((sample) => build(sample))
+      .catch(() => build());
+    if (conditions.reduce) {
+      return () => {
+        cancelled = true;
+        field?.destroy();
+      };
+    }
+
+    // The pin exists from the start, in page order; the particles attach when ready.
     const pin = el.querySelector(".connection-pin");
-    const tl = gsap.timeline({
-      defaults: { ease: "none" },
-      scrollTrigger: conditions.desktop
-        ? { trigger: pin, start: "top top", end: "+=130%", pin: true, scrub: 1 }
-        : { trigger: stage, start: "top 80%", end: "center 40%", scrub: 1 },
-    });
-    tl.fromTo(field, { morph: 0 }, { morph: 1, duration: 1 }).from(
-      el.querySelector(".caption-line"),
-      { autoAlpha: 0, x: 40, duration: 0.3 },
-      0.75,
-    );
-    return () => field.destroy();
+    gsap
+      .timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: conditions.desktop
+          ? { trigger: pin, start: "top top", end: "+=130%", pin: true, scrub: 1 }
+          : { trigger: stage, start: "top 80%", end: "center 40%", scrub: 1 },
+      })
+      .to(progress, {
+        morph: 1,
+        duration: 1,
+        onUpdate: () => {
+          if (field) field.morph = progress.morph;
+        },
+      })
+      .from(el.querySelector(".caption-line"), { autoAlpha: 0, x: 40, duration: 0.3 }, 0.75);
+    return () => {
+      cancelled = true;
+      field?.destroy();
+    };
   });
 
   return (
     <section className="connection chapter" id="connection" ref={ref} data-chapter="02">
       <div className="connection-pin">
         <div className="chapter-number">
-          <span>02 / CONNECTION</span>
+          <span>02 / BRING IT TOGETHER</span>
           <i data-rule />
         </div>
         <div className="split-heading">
           <h2 data-split>
-            Bring the pieces
+            Bring every piece
             <br />
             <em>together.</em>
           </h2>
-          <p data-reveal>See what is happening across your business—in one connected view.</p>
+          <p data-reveal>Upload reports, documents and notes. Connect the tools you already use.</p>
         </div>
         <ParticleStage
           className="connection-stage"
-          label={`YOUR BUSINESS connected to ${businessNodes.map((node) => node.label).join(", ")}`}
+          label={`YOUR BUSINESS connected to ${connectionNodes.join(", ")}`}
         >
-          {businessNodes.map((node, index) => (
-            <PLabel key={node.label} index={index} title={node.label} />
+          {connectionNodes.map((node, index) => (
+            <PLabel key={node} index={index} title={node} />
           ))}
           <PLabel title="YOUR BUSINESS" variant="center" />
         </ParticleStage>
         <p className="caption-line">
-          <span /> One connected view of what’s happening.
+          <span /> One source of truth for every branch.
         </p>
       </div>
     </section>
@@ -317,8 +333,8 @@ const steps = [
   },
   {
     number: "03",
-    title: "ACTION",
-    question: "What happens next?",
+    title: "DECISION",
+    question: "What should we do next?",
     glyph: (
       <div className="action-glyph" aria-hidden="true">
         →
@@ -329,7 +345,7 @@ const steps = [
 
 /* Scattered facts → a readable pattern → a direction. */
 const transformationStates: StateDef[] = [
-  { shape: shapes.nebula(1.35, 1, 0.8, 4), motion: motions.swirl(0.0003, 0.02) },
+  { shape: shapes.nebula(1.05, 0.8, 0.6, 4), motion: motions.swirl(0.0003, 0.02) },
   { shape: shapes.bars([0.45, 0.75, 1], 1.9, 0.85, 1.7), motion: motions.drift(0.012) },
   {
     shape: shapes.arrow(),
@@ -364,9 +380,11 @@ export function TransformationScene() {
     const field = mountField(
       stage,
       () => ({
-        count: 3400,
+        count: 4200,
         theme: "dark",
-        glow: 0.15,
+        glow: 0.2,
+        bright: true,
+        size: 1.35,
         radius: [0.3, 0.34],
         pointer: 0.3,
         tilt: 0.05,
@@ -419,7 +437,7 @@ export function TransformationScene() {
   return (
     <section className="transformation chapter" id="transformation" ref={ref} data-chapter="03">
       <div className="chapter-number">
-        <span>03 / TRANSFORMATION</span>
+        <span>03 / HOW IT WORKS</span>
         <i data-rule />
       </div>
       <p className="transformation-lead" data-fill>
@@ -449,6 +467,11 @@ export function TransformationScene() {
             </div>
           ))}
         </div>
+      </div>
+      <div className="section-close">
+        <p data-fill>
+          From a hundred reports to <em>one clear answer.</em>
+        </p>
       </div>
     </section>
   );

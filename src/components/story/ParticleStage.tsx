@@ -12,12 +12,12 @@ export function PLabel({
   index?: number;
   title: string;
   tag?: string | undefined;
-  variant?: "default" | "large" | "center" | "column";
+  variant?: "default" | "large" | "center" | "column" | "card" | "station";
 }) {
   return (
     <span className={`p-label p-label-${variant}`}>
       <span className="p-label-body">
-        {variant !== "center" && <i aria-hidden="true" />}
+        {variant !== "center" && variant !== "card" && <i aria-hidden="true" />}
         <span className="p-label-text">
           {index !== undefined && <small>{String(index + 1).padStart(2, "0")}</small>}
           <strong>{title}</strong>

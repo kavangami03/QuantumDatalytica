@@ -25,7 +25,10 @@ export function Cursor() {
     };
     const over = (event: PointerEvent) => {
       const target = (event.target as HTMLElement | null)?.closest("a, button, [role='tab']");
-      el.classList.toggle("is-hover", Boolean(target));
+      // Over the logo the ring stays hollow: a filled difference-blend disc would recolour it.
+      const onBrand = Boolean(target?.closest(".brand"));
+      el.classList.toggle("is-hover", Boolean(target) && !onBrand);
+      el.classList.toggle("is-ring", onBrand);
     };
     const leave = () => el.classList.add("is-hidden");
     const enter = () => el.classList.remove("is-hidden");

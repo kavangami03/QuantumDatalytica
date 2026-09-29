@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./styles/site.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -243,7 +244,7 @@ h1 > div,
   background: var(--ink);
   color: var(--paper);
   clip-path: inset(0% 0% 0% 0%);
-  animation: preloader-fallback 0.6s 7s forwards;
+  animation: preloader-fallback 0.5s 6s forwards;
 }
 @keyframes preloader-fallback {
   to { opacity: 0; visibility: hidden; }
@@ -2646,3 +2647,100 @@ a:hover .roll > span:nth-child(2) {
   margin-bottom: 2.5rem;
   opacity: 1;
 }
+
+/* ─────────────── Finale: rain that pours into the logo ─────────────── */
+.final-cta {
+  justify-content: flex-end;
+  min-height: 100vh;
+  padding-bottom: clamp(3rem, 7vh, 5rem);
+}
+.final-cta .final-particles {
+  position: absolute !important;
+  inset: 0;
+  z-index: -1;
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+.final-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.final-copy h2 {
+  font-size: clamp(2.8rem, 6vw, 7rem);
+}
+.final-copy > p {
+  margin-top: 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: color-mix(in oklab, var(--paper) 62%, transparent);
+}
+.final-copy .hero-actions {
+  justify-content: center;
+  margin-top: 2rem;
+}
+@media (max-width: 600px) {
+  .final-cta {
+    min-height: 100svh;
+  }
+  .final-copy h2 {
+    font-size: clamp(2.4rem, 11vw, 3.6rem);
+  }
+  .final-copy > p br {
+    display: none;
+  }
+}
+
+/* Hero vertical flow: each source heads its stream, name stacked above the dot. */
+.hero-signal.is-flow .hero-signal-body {
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 0.55rem;
+  translate: -50% calc(-100% + 4px);
+}
+.hero-signal.is-flow .hero-signal-body i::after {
+  display: none;
+}
+.hero-signal.is-flow .hero-signal-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0;
+  font-size: 0.72rem;
+}
+.hero-signal.is-flow .hero-signal-body b {
+  margin: 0;
+}
+
+/* The logo that every hero stream flows into, drawn in particles. */
+.hero-logo-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: min(26vw, 55vh);
+  aspect-ratio: 585 / 350;
+  translate: -50% -2%;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.hero-logo-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .hero-resolution {
+    bottom: 2.25rem;
+    font-size: clamp(2.2rem, 4vw, 5rem);
+  }
+}
+

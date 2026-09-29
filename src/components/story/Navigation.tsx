@@ -3,14 +3,30 @@ import { gsap, useIsoLayoutEffect } from "@/animations/gsap";
 import { scrollToHash, setScrollLock } from "@/animations/smooth";
 import { StoryButton } from "./StoryButton";
 
-const links = [
-  ["What We Solve", "problem"],
-  ["How It Works", "transformation"],
-  ["Industries", "industries"],
-  ["Business Impact", "impact"],
-] as const;
+export type NavLink = { label: string; href: string; active?: boolean };
 
-export function Navigation() {
+export const DEMO_URL = "/request-demo/";
+
+export const homeLinks: NavLink[] = [
+  { label: "What We Solve", href: "#problem" },
+  { label: "How It Works", href: "#transformation" },
+  { label: "Industries", href: "#industries" },
+  { label: "Business Impact", href: "#impact" },
+];
+
+type NavigationProps = {
+  links?: NavLink[];
+  homeHref?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+};
+
+export function Navigation({
+  links = homeLinks,
+  homeHref = "#top",
+  ctaLabel = "Book a demo",
+  ctaHref = DEMO_URL,
+}: NavigationProps) {
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
   const timeline = useRef<gsap.core.Timeline | null>(null);
@@ -46,16 +62,18 @@ export function Navigation() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const go = (event: MouseEvent<HTMLAnchorElement>, target: string) => {
-    event.preventDefault();
+  // In-page anchors scroll smoothly; real page links navigate normally.
+  const go = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     setOpen(false);
-    scrollToHash(`#${target}`);
+    if (!href.startsWith("#")) return;
+    event.preventDefault();
+    scrollToHash(href);
   };
 
   return (
     <>
       <header className="site-nav" data-nav>
-        <a className="brand" href="#top">
+        <a className="brand" href={homeHref} aria-label="QuantumDataLytica home">
           <img
             className="brand-logo"
             src="/brand/logo-on-dark.svg"
@@ -65,18 +83,23 @@ export function Navigation() {
           />
         </a>
         <nav className="nav-links" aria-label="Main navigation">
-          {links.map(([label, target]) => (
-            <a key={target} href={`#${target}`} className="nav-link">
+          {links.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className={`nav-link ${link.active ? "is-active" : ""}`}
+              aria-current={link.active ? "page" : undefined}
+            >
               <span className="roll">
-                <span>{label}</span>
-                <span aria-hidden="true">{label}</span>
+                <span>{link.label}</span>
+                <span aria-hidden="true">{link.label}</span>
               </span>
             </a>
           ))}
         </nav>
         <div className="nav-cta">
-          <StoryButton href="#contact" variant="storyOutline">
-            Talk to us
+          <StoryButton href={ctaHref} variant="storyOutline" track="demo">
+            {ctaLabel}
           </StoryButton>
         </div>
         <button
@@ -95,21 +118,21 @@ export function Navigation() {
       </header>
       <div className="site-menu" id="site-menu" ref={menu} inert={!open}>
         <nav aria-label="Mobile navigation">
-          {links.map(([label, target], index) => (
+          {links.map((link, index) => (
             <a
-              key={target}
-              href={`#${target}`}
+              key={link.href}
+              href={link.href}
               className="menu-link"
-              onClick={(event) => go(event, target)}
+              onClick={(event) => go(event, link.href)}
             >
               <small>0{index + 1}</small>
-              <span>{label}</span>
+              <span>{link.label}</span>
             </a>
           ))}
         </nav>
         <div className="menu-foot" data-menu-fade>
-          <a href="#contact" onClick={(event) => go(event, "contact")}>
-            Talk to us →
+          <a href={ctaHref} data-track="demo" onClick={(event) => go(event, ctaHref)}>
+            {ctaLabel} →
           </a>
           <span>Turning business information into meaningful action.</span>
         </div>
@@ -118,14 +141,14 @@ export function Navigation() {
   );
 }
 
-export function ProgressRail() {
+export function ProgressRail({ total = "08" }: { total?: string }) {
   return (
     <aside className="progress-rail" aria-hidden="true">
       <span data-progress-current>01</span>
       <div>
         <i data-progress-bar />
       </div>
-      <span>08</span>
+      <span>{total}</span>
     </aside>
   );
 }

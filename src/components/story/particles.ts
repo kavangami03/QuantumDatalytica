@@ -50,6 +50,8 @@ export interface FieldOptions {
   glow?: number;
   /** Track the pointer over this element only (defaults to the window). */
   pointerEl?: HTMLElement;
+  /** Draw every particle at full strength in pure white (no depth dimming). */
+  bright?: boolean;
   /** Decide per particle whether it wears the accent colour (e.g. from a sampled image). */
   accentFor?: (i: number) => boolean;
 }
@@ -498,6 +500,35 @@ export function flowState(opts: {
   };
 }
 
+/** Vertical rain: particles pour down in columns, each column at its own pace. */
+export function rainState(
+  opts: { width?: number; top?: number; bottom?: number; lanes?: number } = {},
+): StateDef {
+  const { width = 2.6, top = -1.4, bottom = 1.4, lanes = 46 } = opts;
+  const x0: number[] = [];
+  const u0: number[] = [];
+  const speed: number[] = [];
+  const z0: number[] = [];
+  return {
+    shape: (i, _n, r) => {
+      const lane = Math.floor(r() * lanes);
+      x0[i] = (lane / (lanes - 1) - 0.5) * 2 * width + normal(r) * 0.006;
+      u0[i] = r();
+      // Lanes share a pace so each reads as one stream; a little spread keeps it alive.
+      speed[i] = 0.00016 + (((lane * 7919) % 97) / 97) * 0.00016 + r() * 0.00002;
+      z0[i] = (r() - 0.5) * 0.5;
+      return [x0[i] ?? 0, top, 0];
+    },
+    motion: (i, t, p) => {
+      const u = frac((u0[i] ?? 0) + t * (speed[i] ?? 0.0001));
+      p[0] = x0[i] ?? 0;
+      p[1] = top + u * (bottom - top);
+      p[2] = z0[i] ?? 0;
+    },
+    trail: 0.9,
+  };
+}
+
 /** Particles falling through a narrowing funnel to a single point. */
 export function funnelState(
   opts: { top?: number; bottom?: number; width?: number; speed?: number } = {},
@@ -625,7 +656,23 @@ export class ParticleField {
 
   start() {
     this.running = true;
+    this.lastTime = 0;
     this.loop();
+  }
+
+  /** Pause drawing (e.g. while the stage is hidden) without tearing anything down. */
+  stop() {
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+  }
+
+  /** 0.35–1: share of particles drawn; drops automatically if frames run long. */
+  private quality = 1;
+  private frameAvg = 16.7;
+  private adapt(dt: number) {
+    this.frameAvg += (dt - this.frameAvg) * 0.08;
+    if (this.frameAvg > 19) this.quality = Math.max(0.35, this.quality - 0.03);
+    else if (this.frameAvg < 15.5) this.quality = Math.min(1, this.quality + 0.01);
   }
 
   /** Render one frame at the last state and stop (reduced motion). */
@@ -664,9 +711,10 @@ export class ParticleField {
   }
 
   private resize() {
-    const box = this.canvas.getBoundingClientRect();
+    // Layout size: a scaled-down stage must still render at full resolution.
+    const box = { width: this.canvas.clientWidth, height: this.canvas.clientHeight };
     if (!box.width || !box.height) return;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     this.w = box.width;
     this.h = box.height;
     this.canvas.width = Math.round(box.width * this.dpr);
@@ -683,6 +731,7 @@ export class ParticleField {
     const now = performance.now();
     const dt = this.lastTime ? Math.min(now - this.lastTime, 64) : 16;
     this.lastTime = now;
+    this.adapt(dt);
     this.clock += dt * this.timeScale;
     this.draw(this.clock);
     this.raf = requestAnimationFrame(this.loop);
@@ -740,19 +789,24 @@ export class ParticleField {
 
     const pa: Vec = [0, 0, 0];
     const pb: Vec = [0, 0, 0];
-    const baseColor = theme === "light" ? INK : PAPER;
+    const baseColor = theme === "light" ? INK : this.opts.bright ? "255, 255, 255" : PAPER;
     const accentColor = theme === "light" ? ACCENT : ACCENT_LIGHT;
     const light = theme === "light";
     // Ink on paper needs more body than light on ink to read at the same strength.
     const alphaScale = this.fade;
-    const floor = light ? 0.38 : 0.14;
-    const sizeScale = light ? 1.7 : 1;
+    const floor = light ? 0.38 : this.opts.bright ? 0.9 : 0.14;
+    const sizeScale = light ? 1.7 : this.opts.bright ? 1.25 : 1;
     const local = this.opts.localMorph;
 
+    const q = this.quality;
+    const glowOn = glowStrength > 0 && q > 0.75;
     for (let o = 0; o < n; o++) {
       const i = this.order[o] ?? 0;
       if (o === 0) ctx.fillStyle = `rgb(${this.opts.accentOnly ? accentColor : baseColor})`;
       if (o === this.accentFrom) ctx.fillStyle = `rgb(${accentColor})`;
+      // Under load, skip an evenly spread share of particles.
+      // Scattered skip (a golden-ratio stride would carve wedges out of spheres).
+      if (q < 1 && Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1 > q) continue;
       const i3 = i * 3;
       pa[0] = A.pos[i3] ?? 0;
       pa[1] = A.pos[i3 + 1] ?? 0;
@@ -782,7 +836,7 @@ export class ParticleField {
       const s = (this.size[i] ?? 1) * sizeScale * (out[2] ?? 1) * (0.7 + near * 0.6);
       const px = out[0] ?? 0;
       const py = out[1] ?? 0;
-      if (glowStrength > 0) {
+      if (glowOn) {
         ctx.globalAlpha = alpha * glowStrength;
         ctx.fillRect(px - s * 1.9, py - s * 1.9, s * 3.8, s * 3.8);
       }
