@@ -61,7 +61,7 @@ export function Outcomes() {
         field = mountField(
           stage,
           () => ({
-            count: 3200,
+            count: 2500,
             theme: "dark",
             radius: [0.4, 0.46],
             pointer: 0.4,
@@ -177,7 +177,7 @@ export function AutomationScene() {
     const field = mountField(
       stage,
       () => ({
-        count: desktop ? 5000 : 2200,
+        count: desktop ? 3800 : 1800,
         theme: "dark",
         glow: 0.18,
         bright: true,
@@ -319,7 +319,7 @@ export function QuestionTrail() {
     const field = mountField(
       stage,
       ({ desktop }) => ({
-        count: desktop ? 5200 : 2400,
+        count: desktop ? 4000 : 2000,
         theme: "accent",
         accentRatio: 0,
         bright: true,

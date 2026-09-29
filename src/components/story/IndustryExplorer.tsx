@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { gsap, ScrollTrigger, useScene } from "@/animations/gsap";
 import { industries } from "./data";
-import { clamp01, motions, ParticleField, shapes, type AnchorDef, type Vec } from "./particles";
+import {
+  clamp01,
+  looseState,
+  motions,
+  ParticleField,
+  shapes,
+  type AnchorDef,
+  type Vec,
+} from "./particles";
 import { type IndustryForm, industryState, messToRows } from "./connection-shapes";
 import { labelsIn, mountField, ParticleStage, PLabel } from "./ParticleStage";
 
@@ -52,7 +60,7 @@ export function IndustryExplorer() {
         pointer: 0.35,
         tilt: 0.06,
         seed: 29,
-        states: [{ shape: shapes.nebula(1.6, 1, 0.9), motion: motions.swirl(0.0003, 0.02) }, state],
+        states: [looseState(2.2, 1.4), state],
         anchors,
       }),
       conditions,

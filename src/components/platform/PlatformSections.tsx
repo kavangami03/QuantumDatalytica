@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { gsap, ScrollTrigger, SplitText, useScene } from "@/animations/gsap";
 import {
+  looseState,
   flowState,
   motions,
   type ParticleField,
@@ -829,10 +830,7 @@ export function PlatformIntegrations() {
         pointer: 0.3,
         tilt: 0.06,
         seed: 57,
-        states: [
-          { shape: shapes.nebula(1.8, 1, 0.9), motion: motions.swirl(0.0003, 0.02) },
-          spokesState(integrationNodes, { speed: 0.00011 }),
-        ],
+        states: [looseState(2.6, 1.3), spokesState(integrationNodes, { speed: 0.00011 })],
         anchors: [
           ...labels
             .slice(0, 5)
@@ -1225,10 +1223,7 @@ export function PlatformTrust() {
         pointer: 0.35,
         accentRatio: 0.5,
         seed: 508,
-        states: [
-          { shape: shapes.nebula(2.2, 1.1, 0.8, 3), motion: motions.swirl(0.0003, 0.03) },
-          shieldState(0, -0.08, 0.95),
-        ],
+        states: [looseState(2, 1.4), shieldState(0, -0.08, 0.95)],
       }),
       conditions,
     );

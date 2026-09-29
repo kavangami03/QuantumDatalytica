@@ -2,6 +2,7 @@ import { useRef, type CSSProperties, type ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { gsap, ScrollTrigger, SplitText, useScene } from "@/animations/gsap";
 import {
+  looseState,
   imageShape,
   rainState,
   loopState,
@@ -111,7 +112,7 @@ export function UseCases() {
       return mountField(
         card.querySelector(".scenario-particles"),
         ({ desktop }) => ({
-          count: desktop ? 1600 : 900,
+          count: desktop ? 750 : 500,
           theme: "dark",
           glow: 0.2,
           bright: true,
@@ -122,10 +123,7 @@ export function UseCases() {
           pointerEl: card,
           tilt: 0.1,
           seed: 60 + index,
-          states: [
-            { shape: shapes.nebula(1.2, 0.8, 0.7), motion: motions.swirl(0.0004, 0.02) },
-            make(),
-          ],
+          states: [looseState(), make()],
         }),
         conditions,
       );
@@ -253,7 +251,7 @@ export function Ecosystem() {
         field = mountField(
           stage,
           ({ desktop }) => ({
-            count: desktop ? 5200 : 2400,
+            count: desktop ? 4000 : 2000,
             theme: "dark",
             glow: 0.18,
             bright: true,
@@ -418,7 +416,7 @@ export function FinalCTA({ children }: { children?: ReactNode }) {
           // Where each particle lands, top (0) to bottom (1) of the logo.
           const landY = (i: number) => sample.points[i % sample.points.length]?.[1] ?? 0.5;
           field = new ParticleField(canvas, {
-            count: conditions.desktop ? 4800 : 2200,
+            count: conditions.desktop ? 3800 : 1800,
             theme: "dark",
             glow: 0.2,
             bright: true,

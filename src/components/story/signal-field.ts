@@ -9,6 +9,8 @@
  * Labels are DOM elements pinned to projected 3D anchors so they stay readable.
  */
 
+import { dotAt } from "./particles";
+
 const PAPER = "243, 240, 234";
 const ACCENT = "72, 112, 255";
 const LANES = 9;
@@ -367,8 +369,12 @@ export class SignalField {
     const q = this.quality;
     for (let o = 0; o < n; o++) {
       const i = this.order[o] ?? 0;
-      if (o === 0) ctx.fillStyle = `rgb(${PAPER})`;
-      if (o === this.accentFrom) ctx.fillStyle = `rgb(${ACCENT})`;
+      if (o === 0) {
+        ctx.fillStyle = `rgb(${PAPER})`;
+      }
+      if (o === this.accentFrom) {
+        ctx.fillStyle = `rgb(${ACCENT})`;
+      }
       // Scattered skip (a golden-ratio stride would carve a wedge out of the sphere).
       if (q < 1 && Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1 > q) continue;
       position(i, this.delay[i] ?? 0, pos);
@@ -383,7 +389,7 @@ export class SignalField {
         (1 + 0.45 * toLogo) *
         (1.35 - 0.35 * smooth(clamp01(toSphere)));
       ctx.globalAlpha = alpha;
-      ctx.fillRect((out[0] ?? 0) - s / 2, (out[1] ?? 0) - s / 2, s, s);
+      dotAt(ctx, out[0] ?? 0, out[1] ?? 0, s, dpr);
     }
     ctx.globalAlpha = 1;
 

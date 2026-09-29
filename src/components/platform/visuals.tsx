@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode, type RefObject } from "react";
 import { gsap, ScrollTrigger, useScene } from "@/animations/gsap";
-import { motions, shapes, type StateDef } from "@/components/story/particles";
+import { motions, type StateDef } from "@/components/story/particles";
 import { mountField, ParticleStage } from "@/components/story/ParticleStage";
 import {
   circulatingTorus,
@@ -190,7 +190,11 @@ export function useMetaphorCards(scope: RefObject<HTMLElement | null>) {
           tilt: 0.1,
           seed: 120 + index,
           states: [
-            { shape: shapes.nebula(1.2, 0.8, 0.7), motion: motions.swirl(0.0004, 0.02) },
+            // Start loose across the whole card, then gather into the picture.
+            {
+              shape: (_i, _n, r) => [(r() * 2 - 1) * 2.3, (r() * 2 - 1) * 1.3, (r() * 2 - 1) * 0.6],
+              motion: motions.drift(0.04),
+            },
             make(),
           ],
         }),

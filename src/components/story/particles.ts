@@ -62,6 +62,23 @@ const PAPER = "243, 240, 234";
 const ACCENT = "58, 98, 255";
 const ACCENT_LIGHT = "92, 128, 255";
 
+/**
+ * A round particle drawn with two crossed rectangles: at particle sizes the
+ * octagon reads as a dot, and fillRect keeps it as cheap as a plain square.
+ * Specks under ~2.5 device pixels are a single square (identical at that size).
+ */
+export function dotAt(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, dpr: number) {
+  if (s * dpr < 2.5) {
+    ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    return;
+  }
+  const d = s * 1.15;
+  const h = d / 2;
+  const n = d * 0.33;
+  ctx.fillRect(x - h, y - n, d, n * 2);
+  ctx.fillRect(x - n, y - h, n * 2, d);
+}
+
 export const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 export const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 export const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -325,6 +342,17 @@ export const motions = {
       p[1] += Math.cos(t * 0.00035 + ph * 1.3) * drift;
     },
 };
+
+/**
+ * An even, loose scatter across the stage: the starting point for fields that
+ * gather into a picture, so nothing opens as a dense, over-bright clump.
+ */
+export function looseState(w = 2.3, h = 1.3, d = 0.6): StateDef {
+  return {
+    shape: (_i, _n, r) => [(r() * 2 - 1) * w, (r() * 2 - 1) * h, (r() * 2 - 1) * d],
+    motion: motions.drift(0.04),
+  };
+}
 
 /** Hub with spokes: a dense core, a cluster per node, particles streaming inward. */
 export function spokesState(
@@ -668,6 +696,8 @@ export class ParticleField {
 
   /** 0.35–1: share of particles drawn; drops automatically if frames run long. */
   private quality = 1;
+  /** 0→1 over the first second on screen, so a field eases in instead of popping in dense. */
+  private reveal = 0;
   private frameAvg = 16.7;
   private adapt(dt: number) {
     this.frameAvg += (dt - this.frameAvg) * 0.08;
@@ -680,6 +710,7 @@ export class ParticleField {
     this.running = false;
     cancelAnimationFrame(this.raf);
     this.morph = state;
+    this.reveal = 1;
     this.draw(this.clock);
   }
 
@@ -743,6 +774,7 @@ export class ParticleField {
     this.lastTime = now;
     this.adapt(dt);
     this.clock += dt * this.timeScale;
+    if (this.reveal < 1) this.reveal = Math.min(1, this.reveal + dt / 1100);
     this.draw(this.clock);
     this.raf = requestAnimationFrame(this.loop);
   };
@@ -803,17 +835,24 @@ export class ParticleField {
     const accentColor = theme === "light" ? ACCENT : ACCENT_LIGHT;
     const light = theme === "light";
     // Ink on paper needs more body than light on ink to read at the same strength.
-    const alphaScale = this.fade;
+    const alphaScale = this.fade * smooth(this.reveal);
     const floor = light ? 0.38 : this.opts.bright ? 0.9 : 0.14;
     const sizeScale = light ? 1.7 : this.opts.bright ? 1.25 : 1;
     const local = this.opts.localMorph;
 
     const q = this.quality;
-    const glowOn = glowStrength > 0 && q > 0.75;
+    // Glow fades out as quality drops, rather than switching off in one frame.
+    const glowK = glowStrength * clamp01((q - 0.6) / 0.35);
+    const glowOn = glowK > 0.001;
     for (let o = 0; o < n; o++) {
       const i = this.order[o] ?? 0;
-      if (o === 0) ctx.fillStyle = `rgb(${this.opts.accentOnly ? accentColor : baseColor})`;
-      if (o === this.accentFrom) ctx.fillStyle = `rgb(${accentColor})`;
+      if (o === 0) {
+        const rgb = this.opts.accentOnly ? accentColor : baseColor;
+        ctx.fillStyle = `rgb(${rgb})`;
+      }
+      if (o === this.accentFrom) {
+        ctx.fillStyle = `rgb(${accentColor})`;
+      }
       // Under load, skip an evenly spread share of particles.
       // Scattered skip (a golden-ratio stride would carve wedges out of spheres).
       if (q < 1 && Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1 > q) continue;
@@ -846,12 +885,13 @@ export class ParticleField {
       const s = (this.size[i] ?? 1) * sizeScale * (out[2] ?? 1) * (0.7 + near * 0.6);
       const px = out[0] ?? 0;
       const py = out[1] ?? 0;
-      if (glowOn) {
-        ctx.globalAlpha = alpha * glowStrength;
-        ctx.fillRect(px - s * 1.9, py - s * 1.9, s * 3.8, s * 3.8);
+      // One halo per three particles, three times as strong: the same bloom for a third of the fill.
+      if (glowOn && i % 3 === 0) {
+        ctx.globalAlpha = Math.min(alpha * glowK * 3, 1);
+        dotAt(ctx, px, py, s * 3.4, dpr);
       }
       ctx.globalAlpha = alpha;
-      ctx.fillRect((out[0] ?? 0) - s / 2, (out[1] ?? 0) - s / 2, s, s);
+      dotAt(ctx, px, py, s, dpr);
     }
     ctx.globalAlpha = 1;
 
