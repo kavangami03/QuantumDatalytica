@@ -2,28 +2,38 @@
  * Canvas particle field for the hero.
  *
  * Every particle owns three positions and `morph` blends between them:
- *   0 → nine floating clusters of business data, each carrying its label,
- *       above and below the headline, in a light dust
+ *   0 → the eight business sources floating round the headline, each one an
+ *       icon drawn in particles with a sprinkle of data round it
  *   1 → one slowly turning sphere ("one business view")
- *   2 → nine streams pouring down and converging ("action")
+ *   2 → eight streams pouring down and converging ("action")
  * The streams end in the QuantumDataLytica logo, drawn in particles, hanging from that point.
  * Labels are DOM elements pinned to projected 3D anchors so they stay readable.
  */
 
+import { iconPoint, type IconKind } from "./connection-shapes";
 import { dotAt } from "./particles";
 
 const PAPER = "243, 240, 234";
 const ACCENT = "72, 112, 255";
-const LANES = 9;
+const LANES = 8;
 const TAU = Math.PI * 2;
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const smooth = (t: number) => t * t * (3 - 2 * t);
 /* Vertical flow: labels in a row along the top, streams falling to one point. */
-const FLOW_TOP = -1.2;
-const FLOW_END = -0.3;
-const laneX = (k: number) => ((k - (LANES - 1) / 2) / ((LANES - 1) / 2)) * 2.55;
+const FLOW_TOP = -0.92;
+const FLOW_END = -0.38;
+const laneX = (k: number) => ((k - (LANES - 1) / 2) / ((LANES - 1) / 2)) * 2.3;
+/* Left-to-right lane of each source in the flow (the design orders them differently). */
+const LANE_OF = [0, 3, 5, 7, 1, 2, 4, 6];
+/* The streams turn blue as they flow into the logo. */
+const ICE = "120, 170, 255";
+const mixRgb = (a: string, b: string, t: number) => {
+  const pa = a.split(",").map(Number);
+  const pb = b.split(",").map(Number);
+  return pa.map((v, i) => Math.round(v + ((pb[i] ?? v) - v) * t)).join(", ");
+};
 /* The logo sits above the closing line. */
 const LOGO_W = 2.3;
 const LOGO_Y = FLOW_END;
@@ -32,22 +42,23 @@ const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
 type Vec = [number, number, number];
 
 /*
- * Where each signal's cluster floats, as fractions of the stage [x, y] plus a
- * depth: five in the band above the headline, four in the band below it,
- * staggered so no cluster or label meets another. Each label's text runs to
- * the right of its dot, so the rightmost dots stop well short of the edge.
+ * The eight sources, placed as in the design's 1920 × 1080 hero: icon centre as
+ * fractions of the stage [x, y], a depth for parallax, and the icon it draws.
+ * Order matches the labels in HeroScene.
  */
-const CLUSTERS: Vec[] = [
-  [0.12, 0.26, 0.15],
-  [0.3, 0.23, -0.2],
-  [0.48, 0.27, 0.2],
-  [0.64, 0.235, -0.15],
-  [0.8, 0.26, 0.1],
-  [0.2, 0.745, -0.15],
-  [0.39, 0.715, 0.2],
-  [0.58, 0.75, -0.2],
-  [0.76, 0.72, 0.1],
+const SOURCES: Array<{ at: Vec; kind: IconKind }> = [
+  { at: [0.106, 0.31, 0.15], kind: "stack" }, // Branch reports
+  { at: [0.259, 0.213, -0.2], kind: "grid" }, // Spreadsheets
+  { at: [0.73, 0.202, 0.2], kind: "page" }, // Documents
+  { at: [0.846, 0.391, -0.15], kind: "note" }, // Handover notes
+  { at: [0.07, 0.552, -0.1], kind: "person" }, // Customer records
+  { at: [0.211, 0.722, 0.2], kind: "chart" }, // Finance
+  { at: [0.644, 0.725, -0.2], kind: "chat" }, // Feedback
+  { at: [0.843, 0.69, 0.1], kind: "boxes" }, // Inventory
 ];
+/* Opening roles: a point on the icon, sparkle round the icon, or loose dust. */
+const ON_ICON = 1;
+const SPARKLE = 2;
 
 /* Each cluster floats as one piece: a slow bob with its own rhythm. */
 const floatAt = (k: number, t: number, out: Vec) => {
@@ -80,16 +91,21 @@ export class SignalField {
   private order: Uint16Array; // paper particles first, accent after
   private accentFrom: number;
   private anchorsB: Vec[];
-  /** Which cluster a particle floats with in the opening; -1 for loose dust. */
+  /** Which source a particle floats with in the opening; -1 for loose dust. */
   private cluster: Int8Array;
+  /** Opening role per particle: ON_ICON, SPARKLE, or 0 for loose dust. */
+  private role: Uint8Array;
+  /** Icon size and the label's drop below it, in R units (set on resize). */
+  private iconScale = 0.5;
+  private labelDy = 0.2;
   private logo: Float32Array | null = null;
   private paperIdx: number[] = [];
   private w = 0;
   private h = 0;
   private dpr = 1;
   private R = 1;
-  /** Cluster centres in R units, recomputed from CLUSTERS whenever the stage resizes. */
-  private homes: Vec[] = CLUSTERS.map(() => [0, 0, 0]);
+  /** Source centres in R units, recomputed from SOURCES whenever the stage resizes. */
+  private homes: Vec[] = SOURCES.map(() => [0, 0, 0]);
   /** Half the stage in R units, for the dust (stored as -1…1 fractions). */
   private halfW = 2.4;
   private halfH = 1.5;
@@ -118,19 +134,29 @@ export class SignalField {
     this.delay = new Float32Array(count);
     this.phase = new Float32Array(count);
     this.cluster = new Int8Array(count);
+    this.role = new Uint8Array(count);
 
     const sphereCount = Math.floor(count * 0.8);
     const accent: number[] = [];
     const paper: number[] = [];
     for (let i = 0; i < count; i++) {
-      // Opening: most particles gather round a signal; the rest is a light dust.
-      // Cluster particles keep an offset from their centre; dust keeps a stage fraction.
-      const k = i % CLUSTERS.length;
-      if (Math.random() < 0.72) {
+      // Opening: most particles draw a source's icon, some sparkle round it, the
+      // rest is loose dust. Icon and sparkle points are in icon units (scaled on
+      // resize); dust keeps a stage fraction.
+      const k = i % SOURCES.length;
+      const roll = Math.random();
+      if (roll < 0.62) {
         this.cluster[i] = k;
-        this.a.set([gauss() * 0.2, gauss() * 0.09, gauss() * 0.22], i * 3);
+        this.role[i] = ON_ICON;
+        const [x, y] = iconPoint(SOURCES[k]?.kind ?? "page", Math.random);
+        this.a.set([x, y, gauss() * 0.02], i * 3);
+      } else if (roll < 0.84) {
+        this.cluster[i] = k;
+        this.role[i] = SPARKLE;
+        this.a.set([gauss() * 0.62, gauss() * 0.42, gauss() * 0.2], i * 3);
       } else {
         this.cluster[i] = -1;
+        this.role[i] = 0;
         this.a.set(
           [Math.random() * 2 - 1, Math.random() * 2 - 1, (Math.random() * 2 - 1) * 1.2],
           i * 3,
@@ -151,18 +177,22 @@ export class SignalField {
       }
 
       this.c.set([i % LANES, Math.random(), gauss() * 0.07, gauss() * 0.12], i * 4);
-      const spark = Math.random() < 0.025;
-      this.size[i] = spark ? 2.6 : 0.7 + Math.random() * 1.2;
+      // Icons read as crisp white outlines; the sparkle carries most of the blue.
+      const onIcon = this.role[i] === ON_ICON;
+      const spark = !onIcon && Math.random() < 0.06;
+      this.size[i] = spark ? 2.6 : onIcon ? 0.7 + Math.random() * 0.6 : 0.6 + Math.random() * 1;
       this.delay[i] = Math.random();
       this.phase[i] = Math.random() * TAU;
-      (Math.random() < 0.32 && !spark ? accent : paper).push(i);
+      const blue = onIcon ? 0.1 : this.role[i] === SPARKLE ? 0.5 : 0.32;
+      (Math.random() < blue && !spark ? accent : paper).push(i);
     }
     this.order = Uint16Array.from([...paper, ...accent]);
     this.accentFrom = paper.length;
     this.paperIdx = paper;
+    // As the sphere, the labels ring its edge so none can cross the centre badge.
     this.anchorsB = labels.map((_, k) => {
-      const [x, y, z] = fibonacci(k * 2 + 1, labels.length * 2 + 2);
-      return [x * 1.04, y * 1.04, z * 1.04];
+      const angle = (k / labels.length) * TAU - Math.PI / 2 + 0.35;
+      return [Math.cos(angle) * 1.45, Math.sin(angle) * 1.2, 0];
     });
 
     this.resizer = new ResizeObserver(() => this.resize());
@@ -234,7 +264,10 @@ export class SignalField {
     this.R = Math.min(this.w * 0.24, this.h * 0.32);
     this.halfW = this.w / 2 / this.R;
     this.halfH = this.h / 2 / this.R;
-    this.homes = CLUSTERS.map(([fx, fy, z]) => [
+    // Icons are ~5% of the stage width, as in the design; the caption sits below.
+    this.iconScale = (this.w * 0.1) / this.R;
+    this.labelDy = (this.w * 0.036) / this.R;
+    this.homes = SOURCES.map(({ at: [fx, fy, z] }) => [
       (fx - 0.5) * 2 * this.halfW,
       (fy - 0.5) * 2 * this.halfH,
       z,
@@ -273,7 +306,8 @@ export class SignalField {
     const cosS = Math.cos(spin);
     const sinS = Math.sin(spin);
     const rot = 1 - toFlow * 0.9;
-    const yaw = (p.x * 0.55 + Math.sin(t * 0.00009) * 0.08) * rot;
+    const yaw =
+      (p.x * (0.3 + 0.25 * smooth(clamp01(toSphere))) + Math.sin(t * 0.00009) * 0.08) * rot;
     const pitch = (p.y * 0.32 + 0.12 * toSphere) * rot;
     const cy1 = Math.cos(yaw);
     const sy1 = Math.sin(yaw);
@@ -320,20 +354,24 @@ export class SignalField {
     const position = (i: number, d: number, res: Vec) => {
       const i3 = i * 3;
       const ph = this.phase[i] ?? 0;
-      // Floating clusters: the group bobs together while each point drifts a little.
+      // Floating sources: each icon bobs as one piece; its outline only shimmers
+      // so it stays crisp, while the sparkle round it drifts more freely.
       const k = this.cluster[i] ?? -1;
       const home = this.homes[k];
       const fl = floats[k];
-      let ax = (a[i3] ?? 0) + Math.sin(t * 0.00031 + ph) * 0.03;
-      let ay = (a[i3 + 1] ?? 0) + Math.cos(t * 0.00027 + ph * 1.3) * 0.025;
-      let az = a[i3 + 2] ?? 0;
+      let ax: number;
+      let ay: number;
+      let az: number;
       if (home && fl) {
-        ax += home[0] + fl[0];
-        ay += home[1] + fl[1];
-        az += home[2] + fl[2];
+        const loose = this.role[i] === ON_ICON ? 0.006 : 0.03;
+        const sc = this.iconScale;
+        ax = home[0] + fl[0] + (a[i3] ?? 0) * sc + Math.sin(t * 0.00031 + ph) * loose;
+        ay = home[1] + fl[1] + (a[i3 + 1] ?? 0) * sc + Math.cos(t * 0.00027 + ph * 1.3) * loose;
+        az = home[2] + fl[2] + (a[i3 + 2] ?? 0) * sc;
       } else {
         ax = (a[i3] ?? 0) * this.halfW * 0.96 + Math.sin(t * 0.00031 + ph) * 0.03;
         ay = (a[i3 + 1] ?? 0) * this.halfH * 0.96 + Math.cos(t * 0.00027 + ph * 1.3) * 0.025;
+        az = a[i3 + 2] ?? 0;
       }
       if (this.morph === 0) {
         res[0] = ax;
@@ -357,7 +395,7 @@ export class SignalField {
         const i4 = i * 4;
         const u = ((((c[i4 + 1] ?? 0) + flowClock) % 1) + 1) % 1;
         const s = smooth(u);
-        const fx = (laneX(c[i4] ?? 0) + (c[i4 + 2] ?? 0)) * (1 - s);
+        const fx = (laneX(LANE_OF[c[i4] ?? 0] ?? 0) + (c[i4 + 2] ?? 0)) * (1 - s);
         const fy = FLOW_TOP + u * (FLOW_END - FLOW_TOP);
         const fz = (c[i4 + 3] ?? 0) * (1 - s);
         const k2 = ease(clamp01(toFlow * 1.35 - d * 0.35));
@@ -389,10 +427,11 @@ export class SignalField {
 
     const pos: Vec = [0, 0, 0];
     const q = this.quality;
+    const paperNow = mixRgb(PAPER, ICE, 0.8 * smooth(clamp01(toFlow * 1.4)));
     for (let o = 0; o < n; o++) {
       const i = this.order[o] ?? 0;
       if (o === 0) {
-        ctx.fillStyle = `rgb(${PAPER})`;
+        ctx.fillStyle = `rgb(${paperNow})`;
       }
       if (o === this.accentFrom) {
         ctx.fillStyle = `rgb(${ACCENT})`;
@@ -403,7 +442,12 @@ export class SignalField {
       project(pos[0], pos[1], pos[2], out);
       const near = out[3] ?? 0;
       const dust = (this.cluster[i] ?? 0) < 0 ? 0.45 + 0.55 * smooth(clamp01(toSphere * 2)) : 1;
-      const alpha = (0.12 + 0.88 * near * near + 0.35 * toLogo) * intensity * dust;
+      // At rest the source icons read as crisp, bright outlines; depth shading
+      // returns as everything gathers into the sphere.
+      const rest = 1 - smooth(clamp01(toSphere * 1.5));
+      const role = this.role[i] ?? 0;
+      const lift = (role === ON_ICON ? 0.6 : role === SPARKLE ? 0.32 : 0.08) * rest;
+      const alpha = (0.12 + lift + (0.88 - lift) * near * near + 0.35 * toLogo) * intensity * dust;
       if (alpha < 0.01) continue;
       const s =
         (this.size[i] ?? 1) *
@@ -420,14 +464,14 @@ export class SignalField {
     const k1 = ease(clamp01(toSphere * 1.35 - 0.17));
     const k2 = ease(clamp01(toFlow * 1.35 - 0.17));
     this.labels.forEach((label, k) => {
-      // Each label floats with the heart of its cluster.
+      // Each label floats as the caption under its source's icon.
       const home = this.homes[k] ?? [0, 0, 0];
       const fl = floats[k] ?? [0, 0, 0];
-      const A: Vec = [home[0] + fl[0], home[1] + fl[1], home[2] + fl[2]];
+      const A: Vec = [home[0] + fl[0], home[1] + fl[1] + this.labelDy, home[2] + fl[2]];
       const Bs = this.anchorsB[k] ?? [0, 0, 0];
-      const Bx = Bs[0] * cosS - Bs[2] * sinS;
-      const Bz = Bs[0] * sinS + Bs[2] * cosS;
-      const Cx = laneX(k);
+      const Bx = Bs[0];
+      const Bz = Bs[2];
+      const Cx = laneX(LANE_OF[k] ?? k);
       const Cy = FLOW_TOP - 0.1;
       let x = A[0] + (Bx - A[0]) * k1;
       let y = A[1] + (Bs[1] - A[1]) * k1;
@@ -437,8 +481,8 @@ export class SignalField {
       z += (0 - z) * k2;
       project(x, y, z, out);
       const near = out[3] ?? 0;
-      const depth = 0.55 + 0.45 * smooth(near);
-      const alpha = this.labelAlpha * (depth + (1 - depth) * k2) * (1 - smooth(toLogo));
+      // Labels stay at full strength in every state so they always read.
+      const alpha = this.labelAlpha * (1 - smooth(toLogo));
       label.style.transform = `translate3d(${(out[0] ?? 0).toFixed(1)}px, ${(out[1] ?? 0).toFixed(1)}px, 0)`;
       label.style.opacity = alpha.toFixed(3);
       label.style.zIndex = String(Math.round(near * 10));

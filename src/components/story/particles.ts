@@ -287,7 +287,7 @@ export const imageShape =
 /** Rasterise text and return filled pixel positions normalised to 0–1 (2:1 box). */
 export function sampleText(
   text: string,
-  font = "500 170px Geist, sans-serif",
+  font = '500 170px "Mona Sans", sans-serif',
 ): Array<[number, number]> {
   const W = 480;
   const H = 240;

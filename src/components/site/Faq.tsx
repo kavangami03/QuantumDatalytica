@@ -49,7 +49,7 @@ export function Faq({ items, chapter, firstOpen = false }: FaqProps) {
         pointer: 0.4,
         accentRatio: 0.45,
         seed: 509,
-        states: [textMark(sampleText("?", "600 220px Geist, sans-serif"), 3.6)],
+        states: [textMark(sampleText("?", '600 220px "Mona Sans", sans-serif'), 3.6)],
       }),
       conditions,
     );

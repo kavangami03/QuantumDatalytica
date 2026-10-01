@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { gsap, useIsoLayoutEffect } from "@/animations/gsap";
 import { scrollToHash, setScrollLock } from "@/animations/smooth";
-import { StoryButton } from "./StoryButton";
 
 export type NavLink = { label: string; href: string; active?: boolean };
 
 export const DEMO_URL = "/request-demo/";
+/** Sign-in for the QuantumDataLytica app. */
+export const LOGIN_URL = "/login/";
 
 export const homeLinks: NavLink[] = [
   { label: "What We Solve", href: "#problem" },
-  { label: "How It Works", href: "#transformation" },
+  { label: "How it Works", href: "#transformation" },
   { label: "Industries", href: "#industries" },
   { label: "Business Impact", href: "#impact" },
   { label: "Platform", href: "/platform" },
@@ -25,8 +26,8 @@ type NavigationProps = {
 export function Navigation({
   links = homeLinks,
   homeHref = "#top",
-  ctaLabel = "Book a demo",
-  ctaHref = DEMO_URL,
+  ctaLabel = "Login / Sign up",
+  ctaHref = LOGIN_URL,
 }: NavigationProps) {
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
@@ -99,9 +100,13 @@ export function Navigation({
           ))}
         </nav>
         <div className="nav-cta">
-          <StoryButton href={ctaHref} variant="storyOutline" track="demo">
+          <a
+            className="nav-btn"
+            href={ctaHref}
+            data-track={ctaHref === DEMO_URL ? "demo" : "login"}
+          >
             {ctaLabel}
-          </StoryButton>
+          </a>
         </div>
         <button
           className="menu-toggle"
@@ -132,7 +137,11 @@ export function Navigation({
           ))}
         </nav>
         <div className="menu-foot" data-menu-fade>
-          <a href={ctaHref} data-track="demo" onClick={(event) => go(event, ctaHref)}>
+          <a
+            href={ctaHref}
+            data-track={ctaHref === DEMO_URL ? "demo" : "login"}
+            onClick={(event) => go(event, ctaHref)}
+          >
             {ctaLabel} →
           </a>
           <span>Turning business information into meaningful action.</span>

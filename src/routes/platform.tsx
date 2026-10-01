@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef } from "react";
-import { Navigation, ProgressRail, type NavLink } from "@/components/story/Navigation";
+import { DEMO_URL, Navigation, ProgressRail, type NavLink } from "@/components/story/Navigation";
 import { Cursor } from "@/components/story/Cursor";
 import { Marquee } from "@/components/story/Marquee";
 import { Faq, faqSchema, type FaqItem } from "@/components/site/Faq";
@@ -185,7 +185,7 @@ function PlatformPage() {
         <a className="skip-link" href="#platform">
           Skip to content
         </a>
-        <Navigation links={links} homeHref="/" ctaLabel="Request a demo" />
+        <Navigation links={links} homeHref="/" ctaLabel="Request a demo" ctaHref={DEMO_URL} />
         <ProgressRail total={ctaChapter} />
         <PlatformHero />
         <Marquee words={["Connect", "Transform", "Automate", "Schedule", "Monitor", "Scale"]} />

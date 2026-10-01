@@ -3,6 +3,7 @@
 @import "tw-animate-css";
 @import "./styles/site.css";
 @import "./styles/platform.css";
+@import "./styles/hero.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -15,9 +16,10 @@
  */
 
 @theme inline {
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Mona Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
-  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-mono: "Fira Code", ui-monospace, monospace;
+  --font-nav: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -63,24 +65,24 @@
 :root {
   --radius: 0.125rem;
   --background: oklch(0.967 0.008 85);
-  --foreground: oklch(0.155 0.012 255);
+  --foreground: oklch(0.172 0.0116 261);
   --card: oklch(0.95 0.008 85);
-  --card-foreground: oklch(0.155 0.012 255);
+  --card-foreground: oklch(0.172 0.0116 261);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.155 0.012 255);
-  --primary: oklch(0.155 0.012 255);
+  --popover-foreground: oklch(0.172 0.0116 261);
+  --primary: oklch(0.172 0.0116 261);
   --primary-foreground: oklch(0.967 0.008 85);
   --secondary: oklch(0.9 0.01 85);
-  --secondary-foreground: oklch(0.155 0.012 255);
+  --secondary-foreground: oklch(0.172 0.0116 261);
   --muted: oklch(0.925 0.009 85);
   --muted-foreground: oklch(0.47 0.012 255);
-  --accent: oklch(0.56 0.235 263);
+  --accent: oklch(0.574 0.234 262.7);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(0.83 0.01 255);
   --input: oklch(0.83 0.01 255);
-  --ring: oklch(0.56 0.235 263);
+  --ring: oklch(0.574 0.234 262.7);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -100,7 +102,8 @@
   --paper: var(--background);
   --line-on-dark: color-mix(in oklab, var(--paper) 16%, transparent);
   --gutter: clamp(1.25rem, 4vw, 4rem);
-  --edge: max(var(--gutter), calc((100vw - 96rem) / 2));
+  /* The design keeps 100px margins on a 1920px frame. */
+  --edge: max(var(--gutter), 5.2vw);
   --ease-story: cubic-bezier(0.7, 0, 0.15, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --btn-hover-bg: var(--ink);
@@ -172,9 +175,9 @@ p {
 }
 h1,
 h2 {
-  font-weight: 400;
-  line-height: 0.92;
-  letter-spacing: -0.055em;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.05em;
 }
 h2 {
   font-size: clamp(3rem, 7.2vw, 8.75rem);
@@ -184,10 +187,10 @@ h2 em,
 .statement em,
 .transformation-lead em,
 .hero-resolution em {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.04em;
   color: var(--accent);
   padding-right: 0.06em;
 }
@@ -793,7 +796,7 @@ a:hover .roll > span:nth-child(2) {
   line-height: 0.86;
   letter-spacing: -0.065em;
   pointer-events: none;
-  text-shadow: 0 0 60px oklch(0.155 0.012 255 / 0.6);
+  text-shadow: 0 0 60px oklch(0.172 0.0116 261 / 0.6);
 }
 .hero-title em {
   padding-right: 0.1em;

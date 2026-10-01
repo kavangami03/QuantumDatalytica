@@ -1136,7 +1136,7 @@ const audiences = [
 const audienceShapes: Array<() => StateDef> = [
   selfBuildingReport,
   () => fitState(industryState("gears").state, 0.62),
-  () => textMark(sampleText("</>", "500 170px Geist, sans-serif"), 2.9),
+  () => textMark(sampleText("</>", '500 170px "Mona Sans", sans-serif'), 2.9),
 ];
 
 export function PlatformTeams() {

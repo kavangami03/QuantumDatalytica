@@ -1,5 +1,20 @@
 import { useRef } from "react";
-import { ArrowDownRight } from "lucide-react";
+import {
+  ArrowUpRight,
+  Boxes,
+  Contact,
+  Database,
+  FileChartColumn,
+  Files,
+  FileText,
+  type LucideIcon,
+  MessageSquareMore,
+  Presentation,
+  Sheet,
+  Target,
+  Users,
+  Zap,
+} from "lucide-react";
 import { gsap, SplitText, useScene } from "@/animations/gsap";
 import { onIntro } from "@/animations/intro";
 import { SignalField } from "./signal-field";
@@ -11,20 +26,29 @@ import {
   sampleImage,
   type StateDef,
 } from "./particles";
-import { StoryButton } from "./StoryButton";
 import { DEMO_URL } from "./Navigation";
 
-const signals = [
-  "Sales",
-  "Customers",
-  "Branches",
-  "Revenue",
-  "Operations",
-  "Inventory",
-  "Bookings",
-  "Feedback",
-  "Reports",
+/* The eight sources floating round the headline (order matches SOURCES in signal-field). */
+const signals: Array<{ name: string; Icon: LucideIcon }> = [
+  { name: "Branch reports", Icon: FileChartColumn },
+  { name: "Spreadsheets", Icon: Sheet },
+  { name: "Documents", Icon: FileText },
+  { name: "Handover notes", Icon: Files },
+  { name: "Customer records", Icon: Contact },
+  { name: "Finance", Icon: Database },
+  { name: "Feedback", Icon: MessageSquareMore },
+  { name: "Inventory", Icon: Boxes },
 ];
+
+/* What comes out of the one connected view, fanned out below the logo. */
+const outcomes: Array<{ title: string; text: string; Icon: LucideIcon }> = [
+  { title: "Clear Insights", text: "See what matters", Icon: Users },
+  { title: "Faster Decisions", text: "Act with confidence", Icon: Presentation },
+  { title: "Spot Opportunities", text: "Catch changes early", Icon: Target },
+  { title: "Automate Workflows", text: "Save time and effort", Icon: Zap },
+  { title: "One Connected View", text: "Every branch, every team", Icon: FileText },
+];
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 /**
  * The logo in particles, kept alive: data keeps rising through the blue bars,
@@ -96,8 +120,7 @@ export function HeroScene() {
     const canvas = el.querySelector<HTMLCanvasElement>(".hero-canvas");
     const pin = el.querySelector<HTMLElement>(".hero-pin");
     const title = el.querySelector<HTMLElement>(".hero-title");
-    const resolution = el.querySelector<HTMLElement>(".hero-resolution");
-    if (!canvas || !pin || !title || !resolution) return;
+    if (!canvas || !pin || !title) return;
 
     const labels = gsap.utils.toArray<HTMLElement>(".hero-signal", el);
     let field: SignalField;
@@ -106,7 +129,7 @@ export function HeroScene() {
         canvas,
         labels,
         el.querySelector(".hero-core"),
-        desktop ? 4200 : 1100,
+        desktop ? 5200 : 1100,
         el.querySelector<HTMLElement>(".hero-logo-stage"),
       );
     } catch {
@@ -159,11 +182,6 @@ export function HeroScene() {
       mask: "lines",
       linesClass: "split-line",
     });
-    const resolutionSplit = SplitText.create(resolution, {
-      type: "lines",
-      mask: "lines",
-      linesClass: "split-line",
-    });
 
     // Opening: the field breathes in, then the words rise through it.
     const intro = gsap
@@ -185,19 +203,59 @@ export function HeroScene() {
     if (!pending.pending) intro.progress(1);
 
     if (!desktop) {
-      gsap.from(resolutionSplit.lines, {
-        yPercent: 110,
-        stagger: 0.1,
-        duration: 1.2,
-        scrollTrigger: { trigger: resolution, start: "top 85%", once: true },
-      });
       return () => {
         pending.cancel();
         field.destroy();
         titleSplit.revert();
-        resolutionSplit.revert();
       };
     }
+
+    // Outcomes: glowing lines fan out from the bottom of the logo to five nodes.
+    const stage = el.querySelector<HTMLElement>(".hero-field");
+    const logoEl = el.querySelector<HTMLElement>(".hero-logo-stage");
+    const outputs = el.querySelector<HTMLElement>(".hero-outputs");
+    const lines = el.querySelector<SVGSVGElement>(".hero-outputs-lines");
+    const floor = el.querySelector<HTMLElement>(".hero-floor");
+    let laidTop = -1;
+    const layoutOutputs = () => {
+      if (!stage || !logoEl || !outputs || !lines) return;
+      const box = stage.getBoundingClientRect();
+      const logo = logoEl.getBoundingClientRect();
+      const top = Math.round(logo.bottom - box.top - logo.height * 0.08);
+      if (Math.abs(top - laidTop) < 1) return;
+      laidTop = top;
+      outputs.style.top = `${top}px`;
+      const area = outputs.getBoundingClientRect();
+      lines.setAttribute("viewBox", `0 0 ${area.width} ${area.height}`);
+      lines.replaceChildren();
+      const x0 = area.width / 2;
+      outputs.querySelectorAll<HTMLElement>(".hero-out-node").forEach((node) => {
+        const r = node.getBoundingClientRect();
+        const x1 = r.left + r.width / 2 - area.left;
+        const y1 = r.top - area.top - 4;
+        const d = `M${x0},0 C${x0},${y1 * 0.55} ${x1},${y1 * 0.25} ${x1},${y1}`;
+        for (const cls of ["hero-line", "hero-line-flow"]) {
+          const path = document.createElementNS(SVG_NS, "path");
+          path.setAttribute("d", d);
+          path.setAttribute("class", cls);
+          lines.append(path);
+        }
+      });
+    };
+    const syncOutputs = () => {
+      const shown = gsap.utils.clamp(0, 1, (field.morph - 1.72) / 0.28);
+      const eased = shown * shown * (3 - 2 * shown);
+      outputs?.style.setProperty("--out", eased.toFixed(3));
+      floor?.style.setProperty("--out", eased.toFixed(3));
+      if (shown > 0) layoutOutputs();
+      // The header steps aside while the streams and logo fill the screen.
+      document.documentElement.classList.toggle("hero-flowing", field.morph > 1.15);
+    };
+    const relayout = () => {
+      laidTop = -1;
+      syncOutputs();
+    };
+    window.addEventListener("resize", relayout);
 
     const move = (event: PointerEvent) => {
       field.setPointer(
@@ -212,29 +270,28 @@ export function HeroScene() {
       .timeline({
         defaults: { ease: "none" },
         scrollTrigger: { trigger: pin, start: "top top", end: "+=320%", pin: true, scrub: 1 },
-        onUpdate: () => syncLogo(),
+        onUpdate: () => {
+          syncLogo();
+          syncOutputs();
+        },
       })
       .to(title, { yPercent: -18, autoAlpha: 0, duration: 0.28, ease: "power2.in" }, 0)
       .to(".hero-top", { autoAlpha: 0, duration: 0.15 }, 0)
       .to(".hero-bottom", { y: 30, autoAlpha: 0, duration: 0.18 }, 0)
       .to(field, { morph: 1, duration: 0.5, ease: "power1.inOut" }, 0.06)
       .to(field, { morph: 2, duration: 0.4, ease: "power1.inOut" }, 0.72)
-      // The closing line lands while the streams settle, then holds so it can be read.
-      .from(
-        resolutionSplit.lines,
-        { yPercent: 115, stagger: 0.05, duration: 0.18, ease: "power3.out" },
-        1.12,
-      )
-      .to({}, { duration: 0.4 });
+      // Hold on the finished picture so the outcomes can be read.
+      .to({}, { duration: 0.5 });
 
     return () => {
       cancelled = true;
       logoField?.destroy();
       pending.cancel();
       window.removeEventListener("pointermove", move);
+      window.removeEventListener("resize", relayout);
+      document.documentElement.classList.remove("hero-flowing");
       field.destroy();
       titleSplit.revert();
-      resolutionSplit.revert();
     };
   });
 
@@ -246,13 +303,16 @@ export function HeroScene() {
           aria-label="Business information converging into one business view"
         >
           <canvas className="hero-canvas" aria-hidden="true" />
-          {signals.map((signal, index) => (
-            <span className="hero-signal" key={signal}>
+          {signals.map(({ name, Icon }, index) => (
+            <span className="hero-signal" key={name}>
               <span className="hero-signal-body">
                 <i aria-hidden="true" />
                 <span className="hero-signal-text">
+                  <span className="hero-signal-icon" aria-hidden="true">
+                    <Icon />
+                  </span>
                   <b>{String(index + 1).padStart(2, "0")}</b>
-                  {signal}
+                  {name}
                 </span>
               </span>
             </span>
@@ -260,6 +320,21 @@ export function HeroScene() {
           <div className="hero-logo-stage" aria-label="QuantumDataLytica">
             <canvas aria-hidden="true" />
           </div>
+          <div className="hero-outputs">
+            <svg className="hero-outputs-lines" aria-hidden="true" />
+            <ul>
+              {outcomes.map(({ title, text, Icon }) => (
+                <li key={title}>
+                  <span className="hero-out-node" aria-hidden="true">
+                    <Icon />
+                  </span>
+                  <strong>{title}</strong>
+                  <small>{text}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <span className="hero-floor" aria-hidden="true" />
           <div className="hero-core">
             <span className="hero-core-ring" aria-hidden="true" />
             <small>ONE</small> BUSINESS VIEW
@@ -267,18 +342,17 @@ export function HeroScene() {
         </div>
 
         <div className="hero-top">
-          <p className="kicker" data-intro>
+          <p className="hero-pill" data-intro>
             One business. One clear view.
           </p>
-          <span className="scroll-cue" data-intro>
-            <i />
-            Scroll to connect <ArrowDownRight />
-          </span>
         </div>
 
         <h1 className="hero-title">
-          Your business creates <em>data</em> every second. <br />
-          Turn it into <em>clear decisions.</em>
+          Your business Creates
+          <br />
+          <em>Data</em> every second.
+          <br />
+          Turn it into <em>clear decisions</em>
         </h1>
 
         <div className="hero-bottom">
@@ -286,20 +360,15 @@ export function HeroScene() {
             Bring every report, branch and team into one place, and get answers you can act on.
           </p>
           <div className="hero-actions" data-intro>
-            <StoryButton href="#transformation" icon={<ArrowDownRight />}>
-              See how it works
-            </StoryButton>
-            <StoryButton href={DEMO_URL} variant="storyOutline" track="demo">
-              Book a demo
-            </StoryButton>
+            <a className="hero-btn hero-btn-primary" href="#transformation">
+              Watch How it Works
+              <ArrowUpRight aria-hidden="true" />
+            </a>
+            <a className="hero-btn hero-btn-outline" href={DEMO_URL} data-track="demo">
+              Book A Demo
+            </a>
           </div>
         </div>
-
-        <p className="hero-resolution">
-          From scattered information
-          <br />
-          to <em>meaningful action.</em>
-        </p>
       </div>
     </section>
   );

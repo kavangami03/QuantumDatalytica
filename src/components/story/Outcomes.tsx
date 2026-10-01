@@ -72,7 +72,7 @@ export function Outcomes() {
     const triggers: ScrollTrigger[] = [];
     if (conditions.desktop || conditions.reduce) {
       const stage = el.querySelector(".outcome-stage");
-      document.fonts.load("500 170px Geist").finally(() => {
+      document.fonts.load('500 170px "Mona Sans"').finally(() => {
         if (cancelled) return;
         field = mountField(
           stage,
@@ -492,8 +492,8 @@ export function QuestionTrail() {
         );
       } else field.morph = progress.morph;
     };
-    // The number is drawn in Geist; wait for it so the digits sample cleanly.
-    void document.fonts.load("500 170px Geist").finally(build);
+    // The number is drawn in Mona Sans; wait for it so the digits sample cleanly.
+    void document.fonts.load('500 170px "Mona Sans"').finally(build);
 
     return () => {
       cancelled = true;
