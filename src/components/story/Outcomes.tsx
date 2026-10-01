@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { gsap, ScrollTrigger, SplitText, useScene } from "@/animations/gsap";
 import {
@@ -11,8 +11,24 @@ import {
   shapes,
 } from "./particles";
 import { labelsIn, mountField, ParticleStage, PLabel } from "./ParticleStage";
-import { infinityState, stationsState, traceState } from "./connection-shapes";
-import type { Vec } from "./particles";
+import { infinityState, stationsState } from "./connection-shapes";
+import type { ParticleField, Vec } from "./particles";
+import {
+  answerState,
+  branches,
+  branchesState,
+  branchLabelAt,
+  dipAt,
+  flagAt,
+  type Frame,
+  hourTicks,
+  hoursState,
+  isSignal,
+  numberCaptionAt,
+  numberState,
+  tickAt,
+  usualAt,
+} from "./drill-shapes";
 
 const outcomes = [
   ["01", "SEE CLEARLY", "Every branch, every team, one view."],
@@ -286,82 +302,70 @@ export function AutomationScene() {
   );
 }
 
-const trail = ["Revenue", "Branches", "Customers", "Products", "Timing", "Patterns", "The answer"];
 const questions = [
   "“Why did revenue change this month?”",
   "“Which branch needs attention today?”",
   "“Where are we losing time?”",
   "“What should I look at first?”",
 ];
-/* The clue path: a zigzag from the top of the frame down to the answer. */
-const tracePoints: Vec[] = [
-  [-1.6, -1.05, 0],
-  [0.2, -0.75, 0],
-  [-1.1, -0.42, 0],
-  [0.75, -0.1, 0],
-  [-0.7, 0.22, 0],
-  [1.25, 0.52, 0],
-  [0.1, 0.92, 0],
+/* What each step of the drill-down turns up. */
+const findings = [
+  ["Revenue", "Down 18% this month"],
+  ["Branch", "Harbour, down 41%"],
+  ["Timing", "Weekday evenings, 5–9pm"],
+  ["Answer", "Three best-sellers out of stock"],
 ];
+const pad2 = (value: number) => String(value).padStart(2, "0");
+
+/** A caption pinned to a point in the drill-down; centred on its anchor. */
+function DrillTag({ children, kind }: { children: ReactNode; kind: string }) {
+  return (
+    <span className={`p-label drill-tag drill-tag-${kind}`}>
+      <span>{children}</span>
+    </span>
+  );
+}
 
 /**
- * Follow the signal: a live trace draws down through every clue, lighting
- * each one as it arrives, and ends in a burst at the answer.
+ * Follow the signal: one number, drilled into until it tells its story.
+ * Revenue is down → one branch collapsed → its evenings went missing → the
+ * answer, framed. Each question on the left is answered by the chart it
+ * turns into on the right, and the drill path records every finding.
  */
 export function QuestionTrail() {
   const ref = useRef<HTMLElement>(null);
 
   useScene(ref, (conditions, el) => {
-    const stage = el.querySelector(".signal-stage");
-    const nodes = labelsIn(stage);
-    const { state, along } = traceState(tracePoints);
-    const progress = { value: conditions.reduce ? 1 : 0 };
-    const field = mountField(
-      stage,
-      ({ desktop }) => ({
-        count: desktop ? 4000 : 2000,
-        theme: "accent",
-        accentRatio: 0,
-        bright: true,
-        glow: 0.2,
-        size: 1.7,
-        radius: desktop ? [0.24, 0.42] : [0.42, 0.42],
-        pointer: 0.2,
-        seed: 3,
-        states: [{ shape: () => [tracePoints[0]?.[0] ?? 0, tracePoints[0]?.[1] ?? 0, 0] }, state],
-        // The trace only reaches as far as the scroll has taken it.
-        localMorph: (i) => {
-          const k = (progress.value * 1.04 - along(i)) * 14;
-          return k < 0 ? 0 : k > 1 ? 1 : k;
-        },
-        anchors: nodes.map((node, index) => ({
-          el: node,
-          at: [tracePoints[index] ?? null, tracePoints[index] ?? null],
-        })),
-      }),
-      conditions,
-    );
-    // Just under 1: stay between the two states so localMorph decides per particle.
-    if (field) field.morph = 0.999;
-
-    const light = () => {
-      nodes.forEach((node, index) => {
-        const at = index / (tracePoints.length - 1);
-        node.classList.toggle("is-lit", progress.value >= at - 0.01);
-      });
-      el.classList.toggle("is-solved", progress.value > 0.97);
+    const stage = el.querySelector<HTMLElement>(".drill-stage");
+    const card = el.querySelector<HTMLElement>(".drill-answer > div");
+    if (!stage) return;
+    const radius: [number, number] = conditions.desktop ? [0.265, 0.4] : [0.26, 0.4];
+    // The focus frame fits the answer card, whatever size the layout gives it.
+    const frame: Frame = { hw: 0.6, hh: 0.3 };
+    const measure = () => {
+      const R = Math.min(stage.clientWidth * radius[0], stage.clientHeight * radius[1]);
+      if (!R || !card) return;
+      frame.hw = card.offsetWidth / 2 / R;
+      frame.hh = card.offsetHeight / 2 / R;
     };
-    light();
+    measure();
+    const resizer = new ResizeObserver(measure);
+    resizer.observe(stage);
+    if (card) resizer.observe(card);
 
+    let field: ParticleField | null = null;
+    let cancelled = false;
+    const steps = gsap.utils.toArray<HTMLElement>(".drill-path li", el);
+    const count = el.querySelector<HTMLElement>("[data-step]");
     const rotator = el.querySelector<HTMLElement>(".question-rotator");
     const lines = gsap.utils.toArray<HTMLElement>(".question-rotator > span", el);
-    if (conditions.reduce || !rotator || !lines.length) return () => field?.destroy();
-
-    // Each question types in, and is replaced by the next as the signal travels.
-    const splits = lines.map((line) => SplitText.create(line, { type: "words,chars" }));
+    const splits = conditions.reduce
+      ? []
+      : lines.map((line) => SplitText.create(line, { type: "words,chars" }));
     let current = -1;
     let busy: gsap.core.Tween | null = null;
-    gsap.set(lines, { autoAlpha: 0 });
+
+    // Each question types in, replacing the last, as the drill goes one level deeper.
     const show = (index: number) => {
       const line = lines[index];
       if (!line) return;
@@ -369,106 +373,193 @@ export function QuestionTrail() {
       gsap.fromTo(
         splits[index]?.chars ?? [],
         { autoAlpha: 0, yPercent: 40 },
-        {
-          autoAlpha: 1,
-          yPercent: 0,
-          duration: 0.05,
-          stagger: 0.022,
-          ease: "none",
-          overwrite: true,
-        },
+        { autoAlpha: 1, yPercent: 0, duration: 0.05, stagger: 0.02, ease: "none", overwrite: true },
       );
     };
-    const hide = (index: number) => {
-      const line = lines[index];
-      const chars = splits[index]?.chars ?? [];
-      return gsap.to(chars, {
+    const setStep = (next: number) => {
+      if (next === current) return;
+      const previous = current;
+      current = next;
+      steps.forEach((step, index) => {
+        step.classList.toggle("is-active", index === next);
+        step.classList.toggle("is-done", index < next);
+      });
+      if (count) count.textContent = pad2(next + 1);
+      el.classList.toggle("is-solved", next === questions.length - 1);
+      if (conditions.reduce || !rotator) return;
+      busy?.kill();
+      lines.forEach((line, index) => {
+        if (index !== previous && index !== next) gsap.set(line, { autoAlpha: 0 });
+      });
+      if (previous < 0) {
+        show(next);
+        return;
+      }
+      const chars = splits[previous]?.chars ?? [];
+      busy = gsap.to(chars, {
         yPercent: -60,
         autoAlpha: 0,
-        duration: 0.3,
+        duration: 0.28,
         stagger: 0.006,
         ease: "power2.in",
         overwrite: true,
         onComplete: () => {
           gsap.set(chars, { yPercent: 0 });
-          if (line) gsap.set(line, { autoAlpha: 0 });
-        },
-      });
-    };
-    const sync = () => {
-      const next = Math.min(lines.length - 1, Math.floor(progress.value * lines.length * 0.999));
-      if (next === current) return;
-      const previous = current;
-      current = next;
-      busy?.kill();
-      lines.forEach((line, index) => {
-        if (index !== previous && index !== next) gsap.set(line, { autoAlpha: 0 });
-      });
-      if (previous < 0) show(next);
-      else {
-        busy = hide(previous);
-        busy.eventCallback("onComplete", () => {
-          gsap.set(splits[previous]?.chars ?? [], { yPercent: 0 });
           const line = lines[previous];
           if (line) gsap.set(line, { autoAlpha: 0 });
           if (current === next) show(next);
-        });
-      }
+        },
+      });
     };
 
-    // The signal draws down the path as you scroll, and the question changes with it.
-    gsap.to(progress, {
-      value: 1,
-      ease: "none",
-      onUpdate: () => {
-        light();
-        sync();
-      },
-      scrollTrigger: conditions.desktop
-        ? {
-            trigger: el.querySelector(".signal-pin"),
-            start: "top top",
-            end: "+=260%",
-            pin: true,
-            scrub: 1,
-          }
-        : { trigger: stage, start: "top 70%", end: "bottom 40%", scrub: 1 },
-    });
-    ScrollTrigger.create({ trigger: rotator, start: "top 80%", once: true, onEnter: sync });
+    // The pin exists from the start, in page order; the particles attach when ready.
+    const progress = { morph: 0 };
+    if (!conditions.reduce) {
+      setStep(0);
+      const tl = gsap.timeline({
+        defaults: { ease: "none" },
+        onUpdate: () => {
+          if (field) field.morph = progress.morph;
+          setStep(Math.min(questions.length - 1, Math.round(progress.morph)));
+        },
+        scrollTrigger: {
+          trigger: el.querySelector(".drill-pin"),
+          start: "top top",
+          end: conditions.desktop ? "+=340%" : "+=300%",
+          pin: true,
+          scrub: 1,
+        },
+      });
+      // Hold on each finding, then drill one level deeper.
+      tl.to({}, { duration: 0.35 });
+      [1, 2, 3].forEach((to) => {
+        tl.to(progress, { morph: to, duration: 0.6, ease: "power1.inOut" }).to(
+          {},
+          { duration: 0.45 },
+        );
+      });
+    }
+
+    const build = () => {
+      if (cancelled) return;
+      const labels = labelsIn(stage);
+      const at = (state: number, point: Vec): Array<Vec | null> =>
+        [0, 1, 2, 3].map((k) => (k === state ? point : null));
+      const anchorPoints: Array<Array<Vec | null>> = [
+        at(0, numberCaptionAt),
+        ...branches.map((_, k) => at(1, branchLabelAt(k))),
+        at(1, flagAt),
+        ...hourTicks.map(([, u]) => at(2, tickAt(u))),
+        at(2, usualAt),
+        at(2, dipAt),
+        at(3, [0, 0, 0]),
+      ];
+      field = mountField(
+        stage,
+        ({ desktop }) => ({
+          count: desktop ? 4600 : 1500,
+          theme: "accent",
+          bright: true,
+          // A small stage packs particles tight: finer dots and less bloom keep it crisp.
+          glow: conditions.reduce || !desktop ? 0.05 : 0.16,
+          size: desktop ? 1.35 : 0.8,
+          radius,
+          pointer: 0.12,
+          tilt: 0,
+          accentRatio: 0,
+          seed: 3,
+          warnFor: isSignal,
+          warnColor: "255, 176, 32",
+          states: [
+            numberState(sampleText("18%")),
+            branchesState(),
+            hoursState(),
+            answerState(frame),
+          ],
+          anchors: labels.map((label, index) => ({
+            el: label,
+            at: anchorPoints[index] ?? [null, null, null, null],
+          })),
+        }),
+        conditions,
+      );
+      if (!field) return;
+      if (conditions.reduce) {
+        // A still page shows the whole drill-down, so it asks the last question.
+        setStep(questions.length - 1);
+        lines.forEach((line, index) =>
+          gsap.set(line, { autoAlpha: index === questions.length - 1 ? 1 : 0 }),
+        );
+      } else field.morph = progress.morph;
+    };
+    // The number is drawn in Geist; wait for it so the digits sample cleanly.
+    void document.fonts.load("500 170px Geist").finally(build);
 
     return () => {
+      cancelled = true;
       busy?.kill();
+      resizer.disconnect();
       field?.destroy();
       splits.forEach((split) => split.revert());
     };
   });
 
   return (
-    <section className="question-trail signal chapter" id="signal" ref={ref}>
-      <div className="signal-pin">
-        <div className="question-copy">
+    <section className="question-trail drill chapter" id="signal" ref={ref}>
+      <div className="drill-pin">
+        <div className="drill-copy">
           <p className="kicker">Follow the signal</p>
+          <p className="drill-count" aria-hidden="true">
+            Question <b data-step>01</b> / {pad2(questions.length)}
+          </p>
           <h2 className="question-rotator">
             {questions.map((question) => (
               <span key={question}>{question}</span>
             ))}
           </h2>
+          <ol className="drill-path">
+            {findings.map(([step, finding], index) => (
+              <li key={step}>
+                <small>{pad2(index + 1)}</small>
+                <span>{step}</span>
+                <strong>{finding}</strong>
+              </li>
+            ))}
+          </ol>
           <p className="trail-result">
             Find the story behind <em>the number.</em>
           </p>
         </div>
         <ParticleStage
-          className="signal-stage"
-          label="The information trail from revenue to the answer"
+          className="drill-stage"
+          label="Revenue down 18%, traced to the Harbour branch on weekday evenings, where three best-sellers are out of stock"
         >
-          {trail.map((item, index) => (
-            <PLabel
-              key={item}
-              index={index}
-              title={item}
-              variant={index === trail.length - 1 ? "large" : "default"}
-            />
+          <DrillTag kind="caption">Revenue · this month vs last</DrillTag>
+          {branches.map((branch) => (
+            <DrillTag key={branch} kind="axis">
+              {branch}
+            </DrillTag>
           ))}
+          <DrillTag kind="flag">−41%</DrillTag>
+          {hourTicks.map(([hour]) => (
+            <DrillTag key={hour} kind="axis">
+              {hour}
+            </DrillTag>
+          ))}
+          <DrillTag kind="legend">Usual day</DrillTag>
+          <DrillTag kind="flag">5–9pm · −60%</DrillTag>
+          <div className="p-label drill-answer">
+            <div>
+              <small>Look here first</small>
+              <strong>Harbour branch, weekday evenings</strong>
+              <p>Three best-sellers run out of stock after 5pm, just as the evening rush starts.</p>
+              <span>
+                <i>Stock</i>
+                <i>Evenings</i>
+                <i>Harbour</i>
+              </span>
+            </div>
+          </div>
         </ParticleStage>
       </div>
     </section>

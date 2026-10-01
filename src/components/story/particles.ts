@@ -54,6 +54,10 @@ export interface FieldOptions {
   bright?: boolean;
   /** Decide per particle whether it wears the accent colour (e.g. from a sampled image). */
   accentFor?: (i: number) => boolean;
+  /** Particles drawn in a warm warning colour (faults, errors). */
+  warnFor?: (i: number) => boolean;
+  /** "r, g, b" for the warnFor particles (defaults to a warm coral). */
+  warnColor?: string;
 }
 
 const TAU = Math.PI * 2;
@@ -61,6 +65,7 @@ const INK = "22, 25, 31";
 const PAPER = "243, 240, 234";
 const ACCENT = "58, 98, 255";
 const ACCENT_LIGHT = "92, 128, 255";
+const WARN = "255, 122, 96";
 
 /**
  * A round particle drawn with two crossed rectangles: at particle sizes the
@@ -609,6 +614,7 @@ export class ParticleField {
   private last: Float32Array;
   private order: Uint16Array;
   private accentFrom: number;
+  private warnFrom: number;
   private rand: Rand;
   private w = 0;
   private h = 0;
@@ -652,16 +658,18 @@ export class ParticleField {
     this.last = new Float32Array(this.n * 3);
     const accent: number[] = [];
     const base: number[] = [];
+    const warn: number[] = [];
     const ratio = opts.accentOnly ? 1 : (opts.accentRatio ?? 0.3);
     for (let i = 0; i < this.n; i++) {
       const spark = this.rand() < 0.02;
       this.size[i] = (spark ? 2.5 : 0.75 + this.rand() * 1.15) * (opts.size ?? 1);
       this.delay[i] = this.rand();
       const wantsAccent = opts.accentFor ? opts.accentFor(i) : this.rand() < ratio && !spark;
-      (wantsAccent ? accent : base).push(i);
+      (opts.warnFor?.(i) ? warn : wantsAccent ? accent : base).push(i);
     }
-    this.order = Uint16Array.from([...base, ...accent]);
+    this.order = Uint16Array.from([...base, ...accent, ...warn]);
     this.accentFrom = base.length;
+    this.warnFrom = base.length + accent.length;
 
     this.resizer = new ResizeObserver(() => this.resize());
     this.resizer.observe(canvas);
@@ -852,6 +860,9 @@ export class ParticleField {
       }
       if (o === this.accentFrom) {
         ctx.fillStyle = `rgb(${accentColor})`;
+      }
+      if (o === this.warnFrom) {
+        ctx.fillStyle = `rgb(${this.opts.warnColor ?? WARN})`;
       }
       // Under load, skip an evenly spread share of particles.
       // Scattered skip (a golden-ratio stride would carve wedges out of spheres).

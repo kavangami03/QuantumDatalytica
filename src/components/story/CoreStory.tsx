@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type CSSProperties } from "react";
 import { gsap, SplitText, useScene } from "@/animations/gsap";
 import {
   frac,
@@ -14,24 +14,38 @@ import { labelsIn, mountField, ParticleStage, PLabel } from "./ParticleStage";
 import {
   coreState,
   type Fault,
+  type FaultLayout,
   faultsState,
   type IconKind,
   iconsState,
   type LogoSample,
 } from "./connection-shapes";
 
-/* Each source and what goes wrong with it (tags drive how its column behaves). */
+/* Each source, what goes wrong with it, and the reading its tile shows. */
 const sources = [
-  ["Branch reports", "DELAYED"],
-  ["Spreadsheets", "DUPLICATE"],
-  ["Documents", "SCATTERED"],
-  ["Handover notes", "LOST"],
-  ["Customer records", "DISCONNECTED"],
-  ["Finance", "DELAYED"],
-  ["Feedback", "UNREAD"],
-  ["Inventory", "OUT OF DATE"],
+  ["Branch reports", "DELAYED", "Land days after the week they describe.", "LAG", "+3 DAYS"],
+  ["Spreadsheets", "DUPLICATE", "Four versions. Nobody knows which is final.", "COPIES", "×4"],
+  ["Documents", "SCATTERED", "Spread across drives, inboxes and desktops.", "PLACES", "6"],
+  ["Handover notes", "LOST", "Gone when the shift or the person changes.", "FOUND", "0"],
+  [
+    "Customer records",
+    "DISCONNECTED",
+    "Sales, support and billing each hold a piece.",
+    "LINKED",
+    "0 / 3",
+  ],
+  ["Finance", "DELAYED", "Month-end numbers, weeks after month-end.", "CLOSE", "+12 DAYS"],
+  ["Feedback", "UNREAD", "Reviews and complaints nobody gets to.", "UNREAD", "312"],
+  [
+    "Inventory",
+    "OUT OF DATE",
+    "Stock counts that were right last Tuesday.",
+    "SYNCED",
+    "9 DAYS AGO",
+  ],
 ] as const;
-const fragments = sources.map(([name]) => name);
+/** What the clarity meter settles on once every source shows its fault. */
+const CLARITY = 12;
 /** 0 · a twin copy, 1 · a crawling flow, 2 · broken into pieces. */
 const siloKind = (tag: string) =>
   tag === "DUPLICATE" ? 0 : tag === "DELAYED" || tag === "OUT OF DATE" ? 1 : 2;
@@ -71,82 +85,138 @@ const faultOf: Record<string, Fault> = {
   "OUT OF DATE": "outdated",
 };
 const sourceFaults = sources.map(([, tag]) => faultOf[tag] ?? "scattered");
-/* Desktop: a 4 × 2 board of tiles, each 1.4R wide and 1.25R tall (the CSS grid
-   draws the same tiles). Icons sit a little above each tile centre. */
-const gridDesktop: Vec[] = [-0.745, 0.505].flatMap((y) =>
-  [-2.1, -0.7, 0.7, 2.1].map((x) => [x, y, 0] as Vec),
-);
-const gridPhone: Vec[] = [-1.5, -0.5, 0.5, 1.5].flatMap((y) =>
-  [-0.62, 0.62].map((x) => [x, y, 0] as Vec),
-);
+const pad2 = (value: number) => String(Math.round(value)).padStart(2, "0");
+
+/**
+ * Point each fault icon at the centre of its tile's icon well, in field units
+ * (the field's R is min(width × rx, height × ry), centred in the stage).
+ */
+function measureBoard(stage: HTMLElement, radius: [number, number], layout: FaultLayout) {
+  const box = stage.getBoundingClientRect();
+  const R = Math.min(stage.clientWidth * radius[0], stage.clientHeight * radius[1]);
+  if (!R) return;
+  const wells = stage.querySelectorAll<HTMLElement>(".pb-icon");
+  wells.forEach((well, k) => {
+    const r = well.getBoundingClientRect();
+    layout.places[k] = [
+      (r.left + r.width / 2 - box.left - box.width / 2) / R,
+      (r.top + r.height / 2 - box.top - box.height / 2) / R,
+      0,
+    ];
+  });
+  const first = wells[0]?.getBoundingClientRect();
+  // Icons span about ±0.25 locally: fill roughly 70% of the well's shorter side.
+  if (first) layout.scale = (Math.min(first.width, first.height) * 1.4) / R;
+}
 
 export function ProblemScene() {
   const ref = useRef<HTMLElement>(null);
 
   useScene(ref, (conditions, el) => {
-    const stage = el.querySelector(".problem-stage");
-    const labels = labelsIn(stage);
-    const places = conditions.desktop ? gridDesktop : gridPhone;
+    const stage = el.querySelector<HTMLElement>(".problem-stage");
+    if (!stage) return;
+    const wide = window.matchMedia("(min-width: 901px)").matches;
+    // Desktop fits the swirling mass to the pinned stage; phones to a tall column.
+    const radius: [number, number] = wide ? [1 / 5.6, 1 / 2.7] : [0.42, 0.24];
+    const layout: FaultLayout = { places: sources.map(() => [0, 0, 0] as Vec), scale: 1 };
+    measureBoard(stage, radius, layout);
+    const faults = faultsState(layout, sourceKinds, sourceFaults);
     const field = mountField(
       stage,
       ({ desktop }) => ({
         count: desktop ? 5600 : 2400,
         theme: "dark",
-        glow: 0.18,
+        // A still frame stacks every halo at once; keep it crisp.
+        glow: conditions.reduce ? 0.04 : 0.18,
         bright: true,
         size: 1.2,
-        // Desktop: R fits the 5.6R × 2.5R board inside the stage.
-        radius: desktop ? [1 / 5.6, 1 / 2.7] : [0.42, 0.24],
+        radius,
         pointer: 0.06,
         tilt: 0,
         accentRatio: 0.3,
         seed: 11,
+        warnFor: faults.warnFor,
         states: [
           // everything at once: one dense, restless mass of data
           { shape: shapes.nebula(1.7, 1.05, 0.9), motion: motions.swirl(0.00028, 0.03) },
           // …that is really eight sources, each broken in its own way
-          faultsState(places, sourceKinds, sourceFaults, conditions.desktop ? 1.05 : 1),
+          faults,
         ],
-        anchors: labels.map((label, index) => {
-          const at = places[index];
-          return { el: label, at: [null, at ? ([at[0], at[1] + 0.4, 0] as Vec) : null] };
-        }),
       }),
       conditions,
     );
-    if (!field || conditions.reduce) return () => field?.destroy();
+    // The icons follow their tiles through every resize and font swap.
+    let live = true;
+    const remeasure = () => {
+      if (!live) return;
+      measureBoard(stage, radius, layout);
+      if (conditions.reduce) field?.still();
+    };
+    const resizer = new ResizeObserver(remeasure);
+    resizer.observe(stage);
+    stage.querySelectorAll(".pb-icon").forEach((well) => resizer.observe(well));
+    void document.fonts.ready.then(remeasure);
+    const cleanup = () => {
+      live = false;
+      resizer.disconnect();
+      field?.destroy();
+    };
+    if (!field || conditions.reduce) return cleanup;
 
     field.morph = 0;
-    // The board of tiles appears as the mass separates into its eight sources.
-    const grid = el.querySelector<HTMLElement>(".problem-grid");
-    gsap.to(field, {
-      morph: 1,
-      ease: "none",
-      onUpdate: () => {
-        if (grid) grid.style.opacity = String(Math.min(field.morph * 1.4, 1));
-      },
+    const board = el.querySelector<HTMLElement>(".problem-board");
+    const tiles = gsap.utils.toArray<HTMLElement>(".pb-tile", el);
+    const pills = tiles.map((tile) => tile.querySelector("em"));
+    const faultCount = el.querySelector<HTMLElement>("[data-faults]");
+    const clarityValue = el.querySelector<HTMLElement>("[data-clarity]");
+    const clarityFill = el.querySelector<HTMLElement>(".pb-meter i");
+    const readout = { faults: 0, clarity: 100 };
+    const paint = () => {
+      if (faultCount) faultCount.textContent = pad2(readout.faults);
+      if (clarityValue) clarityValue.textContent = `${Math.round(readout.clarity)}%`;
+      if (clarityFill) clarityFill.style.transform = `scaleX(${readout.clarity / 100})`;
+      board?.classList.toggle("is-critical", readout.clarity < 40);
+    };
+    paint();
+
+    // One scrubbed story: the mass splits into eight sources, each tile reports
+    // its fault as it lands, the fault count climbs and clarity drains away.
+    const tl = gsap.timeline({
+      defaults: { ease: "none" },
       scrollTrigger: conditions.desktop
-        ? { trigger: stage, start: "top top", end: "+=120%", pin: true, scrub: 1 }
-        : { trigger: stage, start: "top 80%", end: "center 45%", scrub: 1 },
+        ? { trigger: stage, start: "top top", end: "+=170%", pin: true, scrub: 1 }
+        : { trigger: stage, start: "top 75%", end: "bottom 60%", scrub: 1 },
     });
-
-    // Each tag flickers through the failure states once its silo forms.
-    labels.forEach((label, index) => {
-      const tag = label.querySelector("em");
-      if (!tag) return;
-      gsap.to(tag, {
-        duration: 1.2,
-        delay: index * 0.06,
-        scrambleText: { text: tag.textContent ?? "", chars: "DUPLICATEDLYSONR", speed: 0.4 },
-        scrollTrigger: {
-          trigger: stage,
-          start: conditions.desktop ? "top -70%" : "center 60%",
-          once: true,
+    tl.to(field, { morph: 1, duration: 1 }, 0)
+      .fromTo(
+        el.querySelectorAll(".pb-bar, .pb-grid"),
+        { autoAlpha: 0 },
+        { autoAlpha: 1, duration: 0.35, stagger: 0.08 },
+        0.3,
+      )
+      .from(
+        tiles.flatMap((tile) => [...tile.querySelectorAll(":scope > header, :scope > footer")]),
+        { autoAlpha: 0, y: 18, duration: 0.3, stagger: 0.06, ease: "power2.out" },
+        0.55,
+      );
+    pills.forEach((pill, index) => {
+      if (!pill) return;
+      tl.to(
+        pill,
+        {
+          duration: 0.3,
+          scrambleText: { text: pill.textContent ?? "", chars: "DUPLICATEDLYSONR", speed: 0.6 },
         },
-      });
+        0.62 + index * 0.06,
+      );
     });
+    tl.to(
+      readout,
+      { faults: sources.length, clarity: CLARITY, duration: 0.6, onUpdate: paint },
+      0.6,
+    ).to({}, { duration: conditions.desktop ? 0.35 : 0.05 });
 
-    return () => field.destroy();
+    return cleanup;
   });
 
   return (
@@ -168,22 +238,63 @@ export function ProblemScene() {
       <div className="problem-bleed">
         <ParticleStage
           className="problem-stage p-panel"
-          label="Disconnected sources of business information"
+          label="Eight disconnected sources of business information, each with a fault"
         >
-          <div className="problem-grid" aria-hidden="true">
-            {fragments.map((fragment) => (
-              <span key={fragment} />
-            ))}
+          <div className="problem-board is-critical">
+            <div className="pb-bar">
+              <span className="pb-live">
+                <i aria-hidden="true" />
+                Source check
+              </span>
+              <span className="pb-stats">
+                <span>
+                  Sources <b>{pad2(sources.length)}</b>
+                </span>
+                <span>
+                  Connected <b>00</b>
+                </span>
+                <span className="pb-warn">
+                  Faults <b data-faults>{pad2(sources.length)}</b>
+                </span>
+              </span>
+            </div>
+            <div className="pb-grid">
+              {sources.map(([name, tag, note, metric, value], index) => (
+                <article
+                  className="pb-tile"
+                  key={name}
+                  style={{ "--c4": index % 4, "--c2": index % 2 } as CSSProperties}
+                >
+                  <header>
+                    <small>{pad2(index + 1)}</small>
+                    <span className="pb-metric">
+                      {metric} <b>{value}</b>
+                    </span>
+                  </header>
+                  <div className="pb-icon" aria-hidden="true" />
+                  <footer>
+                    <div>
+                      <h3>{name}</h3>
+                      <em>{tag}</em>
+                    </div>
+                    <p>{note}</p>
+                  </footer>
+                </article>
+              ))}
+            </div>
+            <div className="pb-bar">
+              <span className="pb-clarity">
+                Clarity
+                <span className="pb-meter" aria-hidden="true">
+                  <i style={{ transform: `scaleX(${CLARITY / 100})` }} />
+                </span>
+                <b data-clarity>{CLARITY}%</b>
+              </span>
+              <span>
+                Single view <b className="pb-warn">Not available</b>
+              </span>
+            </div>
           </div>
-          {fragments.map((fragment, index) => (
-            <PLabel
-              key={fragment}
-              index={index}
-              title={fragment}
-              tag={sources[index]?.[1]}
-              variant="column"
-            />
-          ))}
         </ParticleStage>
       </div>
       <ul className="stress-chips" aria-label="What it feels like">

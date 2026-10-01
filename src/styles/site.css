@@ -23,13 +23,7 @@ html .section-lead strong {
   color: currentColor;
 }
 
-/* Reality: silo labels may wrap; stress chips pulse like warnings. */
-html .problem-stage .p-label-column .p-label-text strong {
-  max-width: 8.5rem;
-  white-space: normal;
-  line-height: 1.15;
-  text-align: center;
-}
+/* Reality: stress chips pulse like warnings. */
 html .stress-chips {
   display: flex;
   flex-wrap: wrap;
@@ -501,91 +495,270 @@ html .p-label-station .p-label-text strong {
   letter-spacing: 0.16em;
 }
 
-/* ─────────── Follow the signal: a pinned trace ─────────── */
-html .signal {
+/* ─────────── Follow the signal: a full-screen drill-down ───────────
+ * One number, drilled into until it tells its story. The copy and drill path
+ * sit on the left; the chart fills the rest of the screen, edge to edge. */
+html .drill {
+  --signal: oklch(0.85 0.16 75);
   display: block;
-  min-height: 0;
-  padding-block: 0;
+  padding: 0;
+  overflow: clip;
   background:
-    radial-gradient(ellipse 60% 70% at 72% 50%, oklch(0.72 0.17 263 / 0.55), transparent 70%),
-    linear-gradient(135deg, oklch(0.5 0.23 263), oklch(0.4 0.22 266));
-}
-html .signal-pin {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  align-items: center;
-  gap: 2rem;
-  min-height: 100vh;
-  padding: 7rem 0 4rem;
-}
-html .signal .question-copy {
-  position: relative;
-  top: auto;
-  z-index: 2;
-}
-html .signal .question-copy h2 {
-  font-size: clamp(2.6rem, 4.6vw, 5.8rem);
-}
-html .signal .trail-result {
-  width: auto;
-  margin: 3rem 0 0;
-  opacity: 0.35;
-  transition: opacity 0.8s var(--ease-out);
-}
-html .signal.is-solved .trail-result {
-  opacity: 1;
-}
-html .signal-stage {
-  position: relative;
-  height: min(78vh, 46rem);
-}
-html .signal .p-label {
+    radial-gradient(ellipse 55% 70% at 68% 50%, oklch(0.66 0.19 263 / 0.55), transparent 70%),
+    linear-gradient(135deg, oklch(0.5 0.23 263), oklch(0.36 0.21 266));
   color: #fff;
 }
-html .signal .p-label-body > i {
-  width: 12px;
-  height: 12px;
+html .drill-pin {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  height: 100vh;
+  height: 100svh;
+  padding: 5.5rem 0 2rem var(--edge);
+}
+/* A faint measuring grid, fading out toward the edges. */
+html .drill-pin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px) 0 0 / 4rem 4rem,
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px) 0 0 / 4rem 4rem;
+  mask-image: radial-gradient(ellipse 70% 75% at 65% 50%, black 30%, transparent 100%);
+  pointer-events: none;
+}
+html .drill-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 36rem;
+}
+html .drill .kicker {
+  margin-bottom: 1.5rem;
+  color: rgb(255 255 255 / 0.72);
+}
+html .drill-count {
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.6);
+}
+html .drill-count b {
+  font-weight: 500;
+  color: var(--signal);
+}
+html .drill .question-rotator {
+  font-size: clamp(2.3rem, 3.9vw, 4.9rem);
+}
+
+/* The drill path: each level lights up and records what it found. */
+html .drill-path {
+  margin: clamp(2rem, 4vh, 3rem) 0 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid rgb(255 255 255 / 0.22);
+}
+html .drill-path li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  grid-template-rows: auto 0fr;
+  column-gap: 0.4rem;
+  padding: 0.7rem 0 0.7rem 1.4rem;
+  opacity: 0.4;
+  transition:
+    opacity 0.5s var(--ease-out),
+    grid-template-rows 0.6s var(--ease-out);
+}
+html .drill-path li::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 1.05rem;
+  width: 9px;
+  height: 9px;
   border: 1px solid #fff;
   border-radius: 50%;
-  background: transparent;
-  box-shadow: none;
+  background: oklch(0.45 0.22 264);
   transition:
     background-color 0.4s,
-    box-shadow 0.4s,
-    transform 0.4s var(--ease-out);
+    border-color 0.4s,
+    box-shadow 0.4s;
 }
-html .signal .p-label-text strong {
-  font-family: var(--font-sans);
-  font-size: clamp(1.1rem, 1.5vw, 1.5rem);
+html .drill-path small,
+html .drill-path span {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+html .drill-path small {
+  opacity: 0.6;
+}
+html .drill-path strong {
+  grid-column: 2;
+  overflow: hidden;
+  font-size: clamp(1rem, 1.3vw, 1.3rem);
   font-weight: 400;
   letter-spacing: -0.02em;
-  text-transform: none;
-  opacity: 0.4;
-  transition: opacity 0.5s;
 }
-html .signal .p-label.is-lit .p-label-body > i {
+html .drill-path li.is-active,
+html .drill-path li.is-done {
+  grid-template-rows: auto 1fr;
+}
+html .drill-path li.is-done {
+  opacity: 0.72;
+}
+html .drill-path li.is-done::before {
   background: #fff;
-  box-shadow: 0 0 22px 4px #fff;
-  transform: scale(1.2);
 }
-html .signal .p-label.is-lit .p-label-text strong {
+html .drill-path li.is-active {
   opacity: 1;
 }
-html .signal .p-label-large .p-label-text strong {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: clamp(2.4rem, 4vw, 4.2rem);
-  letter-spacing: -0.02em;
+html .drill-path li.is-active::before {
+  border-color: var(--signal);
+  background: var(--signal);
+  box-shadow: 0 0 16px 2px var(--signal);
 }
+html .drill-path li.is-active strong {
+  color: var(--signal);
+}
+html .drill .trail-result {
+  margin-top: clamp(1.5rem, 3.5vh, 2.5rem);
+  font-size: clamp(1.3rem, 1.9vw, 2.1rem);
+  opacity: 0.3;
+  transition: opacity 0.8s var(--ease-out);
+}
+html .drill.is-solved .trail-result {
+  opacity: 1;
+}
+
+/* The chart: runs to the right edge and the full height of the screen. */
+html .drill-stage {
+  position: relative;
+  min-height: 0;
+  margin-block: -5.5rem -2rem;
+}
+html .drill-tag > span {
+  display: block;
+  translate: -50% -50%;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+html .drill-tag-axis > span {
+  font-size: 0.62rem;
+  color: rgb(255 255 255 / 0.72);
+}
+html .drill-tag-caption > span {
+  font-size: 0.7rem;
+  color: rgb(255 255 255 / 0.82);
+}
+html .drill-tag-legend > span {
+  font-size: 0.6rem;
+  color: rgb(255 255 255 / 0.6);
+}
+html .drill-tag-flag > span {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid oklch(0.85 0.16 75 / 0.6);
+  border-radius: 999px;
+  background: oklch(0.85 0.16 75 / 0.14);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: oklch(0.95 0.07 85);
+  box-shadow: 0 0 24px oklch(0.85 0.16 75 / 0.25);
+}
+
+/* The answer card, framed by the particle focus brackets. */
+html .drill-answer > div {
+  translate: -50% -50%;
+  width: min(23rem, 70vw);
+  padding: 1.4rem 1.5rem 1.35rem;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 1rem;
+  background: oklch(0.32 0.16 265 / 0.62);
+  box-shadow: 0 30px 80px -30px oklch(0.18 0.18 265 / 0.9);
+  white-space: normal;
+  color: #fff;
+}
+html .drill-answer small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+html .drill-answer small::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+html .drill-answer strong {
+  display: block;
+  margin: 0.7rem 0 0.55rem;
+  font-size: clamp(1.3rem, 1.7vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+html .drill-answer p {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.75);
+}
+html .drill-answer span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+html .drill-answer i {
+  padding: 0.25rem 0.55rem;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-style: normal;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Phones: the question on top, the chart filling the rest of the screen. */
 @media (max-width: 900px) {
-  html .signal-pin {
+  html .drill-pin {
     grid-template-columns: 1fr;
-    min-height: 0;
-    padding: 7rem 0 5rem;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 5.25rem var(--edge) 1.25rem;
   }
-  html .signal-stage {
-    height: 80vh;
+  html .drill .kicker {
+    margin-bottom: 0.9rem;
+  }
+  html .drill .question-rotator {
+    font-size: clamp(1.8rem, 7.4vw, 2.8rem);
+  }
+  html .drill-path,
+  html .drill .trail-result {
+    display: none;
+  }
+  html .drill-stage {
+    margin: 0 calc(-1 * var(--edge)) -1.25rem;
+  }
+  html .drill-tag-axis > span {
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
   }
 }
 
@@ -854,74 +1027,325 @@ html .site-nav::before {
   backdrop-filter: none;
 }
 
-/* Reality: a 4 × 2 diagnostic board inside the page width. */
+/* ─────────── Reality: a live diagnostic console ───────────
+ * Eight sources, each an instrument tile reporting its fault. A scan beam
+ * sweeps the board and each tile flashes as the beam crosses it. */
+/* Full-bleed: the console runs edge to edge; its content keeps the page's gutters. */
 html .problem-bleed {
-  margin-inline: 0;
+  margin-inline: calc(-1 * var(--edge));
 }
-html .problem-grid {
-  display: none;
+html .problem-stage {
+  --warn: oklch(0.72 0.18 32);
+  --warn-soft: oklch(0.85 0.11 32);
+  --pb-line: color-mix(in oklab, var(--paper) 13%, transparent);
+  --scan: 7s;
+  height: auto;
 }
-@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
-  html .problem-grid {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    width: min(100%, 207.4vh);
-    aspect-ratio: 5.6 / 2.5;
-    translate: -50% -50%;
-    border: 1px solid var(--line-on-dark);
-    border-radius: 1.25rem;
-    overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
-  }
-  html .problem-grid span {
-    border-right: 1px solid var(--line-on-dark);
-    border-bottom: 1px solid var(--line-on-dark);
-    background: radial-gradient(circle at 50% 38%, oklch(0.32 0.13 263 / 0.2), transparent 62%);
-  }
-  html .problem-grid span:nth-child(4n) {
-    border-right: 0;
-  }
-  html .problem-grid span:nth-child(n + 5) {
-    border-bottom: 0;
-  }
+html .problem-board {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: clamp(2rem, 6vw, 3.5rem) var(--edge);
 }
-html .problem-stage .p-label-column .p-label-body > i {
-  display: none;
+
+/* Status bars above and below the board */
+html .pb-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--paper) 55%, transparent);
 }
-html .problem-stage .p-label-column .p-label-text strong {
-  max-width: none;
+html .pb-bar b {
+  margin-left: 0.45em;
+  font-weight: 500;
+  color: var(--paper);
+}
+html .pb-bar .pb-warn,
+html .pb-bar .pb-warn b {
+  color: var(--warn-soft);
+}
+html .pb-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--paper);
+}
+html .pb-live i {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+  box-shadow: 0 0 10px var(--warn);
+}
+html .pb-live i::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--warn);
+  border-radius: 50%;
+  animation: ping 2s var(--ease-out) infinite;
+}
+html .pb-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+}
+html .pb-clarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+html .pb-meter {
+  position: relative;
+  width: clamp(6rem, 14vw, 12rem);
+  height: 3px;
+  border-radius: 3px;
+  background: var(--pb-line);
+  overflow: hidden;
+}
+html .pb-meter i {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left;
+}
+html .problem-board.is-critical .pb-meter i {
+  background: linear-gradient(90deg, var(--warn), var(--warn-soft));
+  box-shadow: 0 0 12px var(--warn);
+}
+html .problem-board.is-critical [data-clarity] {
+  color: var(--warn-soft);
+}
+
+/* The board: tiles drawn with hairlines, transparent so the particles show through */
+html .pb-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--pb-line);
+  border-radius: 1.25rem;
+  overflow: hidden;
+}
+html .pb-grid::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 20%;
+  /* A faint wake behind one crisp leading edge. */
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(0.62 0.2 263 / 0.035) 85%,
+    oklch(0.7 0.18 263 / 0.09) 99%,
+    oklch(0.88 0.1 263 / 0.75) 99.6%,
+    transparent
+  );
+  translate: -100% 0;
+  animation: pb-sweep var(--scan) linear infinite;
+  pointer-events: none;
+}
+html .pb-tile {
+  --cols: 2;
+  --c: var(--c2);
+  /* When the beam's leading edge crosses this tile's column. */
+  --beam: calc(var(--scan) * 0.55 * (var(--c) + 0.5) / var(--cols));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 1rem 1rem 1.1rem;
+  border-right: 1px solid var(--pb-line);
+  border-bottom: 1px solid var(--pb-line);
+  animation: pb-scan var(--scan) linear var(--beam) infinite;
+}
+html .pb-tile:nth-child(2n) {
+  border-right: 0;
+}
+html .pb-tile:nth-child(n + 7) {
+  border-bottom: 0;
+}
+html .pb-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 55% at 50% 45%, oklch(0.5 0.2 263 / 0.18), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out);
+  pointer-events: none;
+}
+html .pb-tile:hover::before {
+  opacity: 1;
+}
+html .pb-tile > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   white-space: nowrap;
-  font-size: clamp(1rem, 1.2vw, 1.3rem);
+  color: color-mix(in oklab, var(--paper) 42%, transparent);
+}
+html .pb-metric b {
+  margin-left: 0.35em;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--paper) 88%, transparent);
+}
+html .pb-icon {
+  flex: 1;
+  min-height: 7.5rem;
+}
+html .pb-tile footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+html .pb-tile h3 {
+  font-size: clamp(1rem, 1.3vw, 1.4rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   color: #fff;
 }
-html .problem-stage .p-label-column .p-label-text small {
-  color: color-mix(in oklab, #fff 50%, transparent);
-}
 /* The fault reads as a status pill: a warm warning, not a whisper. */
-html .problem-stage .p-label-column .p-label-text em {
+html .pb-tile em {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  margin-top: 0.3rem;
-  padding: 0.3rem 0.65rem 0.3rem 0.55rem;
+  padding: 0.3rem 0.6rem 0.3rem 0.5rem;
   border: 1px solid oklch(0.7 0.17 28 / 0.4);
   border-radius: 999px;
   background: oklch(0.6 0.19 28 / 0.14);
-  font-size: 0.64rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
   font-style: normal;
   letter-spacing: 0.14em;
-  color: oklch(0.84 0.12 30);
+  white-space: nowrap;
+  color: var(--warn-soft);
+  animation: pb-pill var(--scan) linear var(--beam) infinite;
+  transition: box-shadow 0.4s var(--ease-out);
 }
-html .problem-stage .p-label-column .p-label-text em::before {
+html .pb-tile em::before {
   content: "";
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 8px currentColor;
+}
+html .pb-tile:hover em {
+  box-shadow: 0 0 20px oklch(0.65 0.19 28 / 0.4);
+}
+html .pb-tile p {
+  max-width: 30ch;
+  /* Two lines reserved, so every tile's title and icon line up across the row. */
+  min-height: 2.8em;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: color-mix(in oklab, var(--paper) 52%, transparent);
+}
+
+@keyframes pb-sweep {
+  0% { translate: -100% 0; }
+  55% { translate: 400% 0; }
+  62%, 100% { translate: 500% 0; }
+}
+@keyframes pb-scan {
+  0% { background-color: oklch(0.55 0.2 263 / 0.07); }
+  12%, 100% { background-color: transparent; }
+}
+@keyframes pb-pill {
+  0% { border-color: oklch(0.8 0.15 30 / 0.95); background-color: oklch(0.62 0.2 28 / 0.32); }
+  12%, 100% { border-color: oklch(0.7 0.17 28 / 0.4); background-color: oklch(0.6 0.19 28 / 0.14); }
+}
+
+@media (min-width: 901px) {
+  html .pb-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+  }
+  html .pb-tile {
+    --cols: 4;
+    --c: var(--c4);
+    padding: clamp(1rem, 1.3vw, 1.4rem) clamp(1rem, 1.4vw, 1.5rem);
+  }
+  html .pb-tile:nth-child(2n) {
+    border-right: 1px solid var(--pb-line);
+  }
+  html .pb-tile:nth-child(4n) {
+    border-right: 0;
+  }
+  html .pb-tile:nth-child(n + 5) {
+    border-bottom: 0;
+  }
+}
+/* Pinned desktop: the console fills the stage, clear of the navigation. */
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  html .problem-stage {
+    height: 100vh;
+  }
+  html .problem-board {
+    position: absolute;
+    inset: 5.75rem var(--edge) 2.25rem;
+    padding: 0;
+  }
+  html .pb-grid {
+    flex: 1;
+    min-height: 0;
+  }
+  html .pb-icon {
+    min-height: 0;
+  }
+}
+@media (max-width: 600px) {
+  html .pb-tile p {
+    display: none;
+  }
+  html .pb-tile {
+    padding: 0.85rem 0.8rem 0.95rem;
+  }
+  html .pb-tile > header {
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+  }
+  html .pb-icon {
+    min-height: 6.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html .pb-grid::after,
+  html .pb-live i::after {
+    display: none;
+  }
+  html .pb-tile,
+  html .pb-tile em {
+    animation: none;
+  }
+}
+@media (max-width: 600px) {
+  html .drill-answer > div {
+    width: min(17rem, 76vw);
+    padding: 1.1rem 1.2rem;
+  }
+  html .drill-answer p {
+    display: none;
+  }
 }

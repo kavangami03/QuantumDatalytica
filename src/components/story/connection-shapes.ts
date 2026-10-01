@@ -281,76 +281,101 @@ export function coreState(
 export type Fault =
   "delayed" | "duplicate" | "scattered" | "lost" | "disconnected" | "unread" | "outdated";
 
+/** Where each fault icon sits and how large it is; read live, so it can follow the layout. */
+export type FaultLayout = { places: Vec[]; scale: number };
+
+/** Share of each icon's particles that carry its fault (drawn in the warning colour). */
+const faultShare: Record<Fault, number> = {
+  delayed: 0.12,
+  duplicate: 0,
+  scattered: 0.3,
+  lost: 0.3,
+  disconnected: 0.08,
+  unread: 0.16,
+  outdated: 0.28,
+};
+
 /**
  * The Reality state: every source as an icon that visibly suffers its problem.
- * delayed: a small loading spinner at its corner · duplicate: a ghost copy behind it ·
- * scattered: it keeps shaking loose · lost: part of it drifts off and back ·
- * disconnected: split in two · unread: a pulsing badge · outdated: it glitches.
+ * The icon itself holds still and readable; only its faulty part misbehaves.
+ * delayed: a stuck loading spinner at its corner · duplicate: a ghost copy behind it ·
+ * scattered: pieces keep shaking loose · lost: part of it drifts off and back ·
+ * disconnected: split in two, sparking across the gap · unread: a pulsing badge ·
+ * outdated: fragments glitch sideways.
  */
 export function faultsState(
-  places: Vec[],
+  layout: FaultLayout,
   kinds: IconKind[],
   faults: Fault[],
-  scale = 1.25,
-): StateDef {
+): StateDef & { warnFor: (i: number) => boolean } {
   const node: number[] = [];
   const local: Array<[number, number]> = [];
   const extra: number[] = [];
   const seed: number[] = [];
   const dir: Array<[number, number]> = [];
+  const warn: boolean[] = [];
+  const count = () => layout.places.length || 1;
   return {
+    warnFor: (i) => warn[i] ?? false,
     shape: (i, _n, r) => {
-      const k = i % places.length;
+      const k = i % count();
       node[i] = k;
       local[i] = iconPoint(kinds[k] ?? "page", r);
       extra[i] = r();
       seed[i] = r();
       const a = r() * TAU;
       dir[i] = [Math.cos(a), Math.sin(a)];
-      const at = places[k] ?? [0, 0, 0];
+      const fault = faults[k] ?? "scattered";
+      warn[i] = (extra[i] ?? 1) < faultShare[fault];
+      const at = layout.places[k] ?? [0, 0, 0];
       const [x, y] = local[i] ?? [0, 0];
-      return [at[0] + x * scale, at[1] + y * scale, at[2]];
+      return [at[0] + x * layout.scale, at[1] + y * layout.scale, at[2]];
     },
     motion: (i, t, p) => {
       const k = node[i] ?? 0;
-      const at = places[k] ?? [0, 0, 0];
+      const at = layout.places[k] ?? [0, 0, 0];
       let [x, y] = local[i] ?? [0, 0];
       const e = extra[i] ?? 0;
       const sd = seed[i] ?? 0;
+      const fault = faults[k] ?? "scattered";
+      const faulty = e < faultShare[fault];
       let z = 0;
-      switch (faults[k]) {
+      switch (fault) {
         case "delayed": {
-          // A few particles form a small spinner at the corner, like a stuck load.
-          if (e < 0.12) {
-            const a = (e / 0.12) * 4.4 + t * 0.005;
-            x = 0.27 + Math.cos(a) * 0.075;
-            y = -0.25 + Math.sin(a) * 0.075;
+          // A short comet circling the corner, like a load that never finishes.
+          if (faulty) {
+            const a = (e / faultShare.delayed) * 4.4 + t * 0.005;
+            x = 0.27 + Math.cos(a) * 0.07;
+            y = -0.26 + Math.sin(a) * 0.07;
           } else {
-            y += Math.sin(t * 0.001 + sd * 6) * 0.008;
+            y += Math.sin(t * 0.001 + sd * 6) * 0.006;
           }
           break;
         }
         case "duplicate": {
-          if (e < 0.45) {
-            // The ghost copy, offset and flickering in position.
-            x += 0.1 + Math.sin(t * 0.003) * 0.012;
+          if (e < 0.42) {
+            // The ghost copy, offset behind and flickering in position.
+            const flick = frac(Math.sin(Math.floor(t * 0.006)) * 43758.5) > 0.86 ? 0.03 : 0;
+            x += 0.1 + Math.sin(t * 0.003) * 0.012 + flick;
             y -= 0.08;
             z = -0.2;
           }
           break;
         }
         case "scattered": {
-          const burst = Math.pow((Math.sin(t * 0.0011 + k) + 1) / 2, 3) * (0.03 + sd * 0.08);
+          // The page holds; its loose pieces burst out and settle back.
+          const burst = Math.pow((Math.sin(t * 0.0011 + k) + 1) / 2, 2);
           const d = dir[i] ?? [0, 0];
-          x += d[0] * burst;
-          y += d[1] * burst;
-          z = d[1] * burst;
+          const reach = faulty ? burst * (0.08 + sd * 0.2) : burst * 0.008;
+          x += d[0] * reach;
+          y += d[1] * reach;
+          z = d[1] * reach;
           break;
         }
         case "lost": {
-          // A slow tide carries part of the icon away, then brings it back.
-          const tide = (Math.sin(t * 0.0006 + k) + 1) / 2;
-          if (e < 0.3) {
+          // A slow tide carries part of the note away, then brings it back.
+          if (faulty) {
+            const tide = (Math.sin(t * 0.0006 + k) + 1) / 2;
             const d = dir[i] ?? [0, 0];
             const far = tide * (0.12 + sd * 0.25);
             x += d[0] * far + tide * 0.2;
@@ -360,15 +385,21 @@ export function faultsState(
         }
         case "disconnected": {
           const gap = 0.07 + Math.sin(t * 0.0012) * 0.025;
+          if (faulty) {
+            // Sparks jumping the gap between the two halves.
+            x = Math.sin(t * 0.021 + sd * 40) * gap * 0.9;
+            y = (sd - 0.5) * 0.36;
+            break;
+          }
           x += x < 0 ? -gap : gap;
           y += x < 0 ? 0.03 : -0.03;
           break;
         }
         case "unread": {
-          if (e < 0.16) {
+          if (faulty) {
             // Notification badge pulsing at the top-right corner.
             const pulse = 1 + Math.sin(t * 0.006) * 0.25;
-            const a = (e / 0.16) * TAU;
+            const a = (e / faultShare.unread) * TAU;
             const rr = Math.sqrt(sd) * 0.055 * pulse;
             x = 0.25 + Math.cos(a) * rr;
             y = -0.2 + Math.sin(a) * rr;
@@ -376,15 +407,17 @@ export function faultsState(
           break;
         }
         case "outdated": {
-          // Rows jump sideways now and then, like a broken screen.
-          const row = Math.floor((y + 0.3) * 12);
-          const glitch = frac(Math.sin(row * 91.7 + Math.floor(t * 0.004)) * 43758.5);
-          if (glitch > 0.82) x += (glitch - 0.9) * 0.9;
+          // Fragments of rows jump sideways now and then, like a broken screen.
+          if (faulty) {
+            const row = Math.floor((y + 0.3) * 12);
+            const glitch = frac(Math.sin(row * 91.7 + Math.floor(t * 0.004)) * 43758.5);
+            if (glitch > 0.7) x += (glitch - 0.85) * 0.8;
+          }
           break;
         }
       }
-      p[0] = at[0] + x * scale;
-      p[1] = at[1] + y * scale;
+      p[0] = at[0] + x * layout.scale;
+      p[1] = at[1] + y * layout.scale;
       p[2] = at[2] + z;
     },
   };
